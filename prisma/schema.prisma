@@ -1,0 +1,109 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Sucursal {
+  id         String @id @default(uuid())
+  nombre     String
+  direccion  String
+  cuit       String
+  regimen    String // "RI" o "MONO"
+  puntoVenta Int
+
+  usuarios Usuario[]
+  stocks   StockSucursal[]
+  ventas   Venta[]
+  compras  Compra[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model Usuario {
+  id     String @id @default(uuid())
+  nombre String
+  pin    String
+  rol    String // "ADMIN" o "CAJERO"
+
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  ventas     Venta[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model Producto {
+  id             String          @id @default(uuid())
+  nombre         String
+  precioEfectivo Decimal         @db.Decimal(10, 2)
+  precioDigital  Decimal         @db.Decimal(10, 2)
+  categoria      String
+  stocks         StockSucursal[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model StockSucursal {
+  id       String @id @default(uuid())
+  cantidad Float  @default(0)
+
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+
+  @@unique([sucursalId, productoId])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
+
+model Venta {
+  id          String   @id @default(uuid())
+  numeroVenta Int      @unique @default(autoincrement())
+  fecha       DateTime @default(now())
+  total       Decimal  @db.Decimal(10, 2)
+  metodoPago  String
+
+  estadoPago  String  @default("PENDIENTE")
+  mpPaymentId String?
+  cae         String?
+  nroFactura  Int?
+  tipoFactura String?
+
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  usuarioId  String
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+}
+
+model Compra {
+  id            String   @id @default(uuid())
+  numeroCompra  Int      @unique @default(autoincrement())
+  fecha         DateTime @default(now())
+  descripcion   String
+  monto         Decimal  @db.Decimal(10, 2)
+  categoria     String
+  fotoTicketKey String?
+
+  sucursalId String
+  sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+}
