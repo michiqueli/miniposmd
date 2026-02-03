@@ -35,7 +35,7 @@ export default async function ProductosPage() {
 
             {/* En la lista de productos, mostramos ambos */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {productos.map((p) => (
+                {productos.map((p: any) => (
                     <div key={p.id} className="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
                         <h3 className="font-bold text-lg uppercase">{p.nombre}</h3>
                         <p className="text-xs text-slate-400 mb-2">{p.categoria}</p>

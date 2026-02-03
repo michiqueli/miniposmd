@@ -14,7 +14,7 @@ export default async function AdminVentasPage() {
   });
 
   // Convertimos Decimal a Number (Serialización obligatoria)
-  const ventas = ventasRaw.map(v => ({
+  const ventas = ventasRaw.map((v: any) => ({
     ...v,
     total: Number(v.total),
   }));
