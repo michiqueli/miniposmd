@@ -66,3 +66,99 @@ export async function vincularTerminal(deviceId: string, sucursalId: string) {
     return { error: "No se pudo guardar la vinculación en la DB" };
   }
 }
+
+export async function consultarEstadoPagoIntent(paymentIntentId: string) {
+  try {
+    // Consultamos el estado de la Intención de Pago (lo que mandamos a la maquinita)
+    const res = await fetch(`https://api.mercadopago.com/point/integration-api/payment-intents/${paymentIntentId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN_PROD}`,
+        'Content-Type': 'application/json'
+      },
+      cache: 'no-store'
+    });
+
+    const data = await res.json();
+
+    /* Estados posibles de payment_intent (data.state):
+      - OPEN: Esperando tarjeta
+      - ON_TERMINAL: Procesando en la maquinita
+      - PROCESSED: Ya terminó (aprobado o rechazado)
+      - CANCELED: Se canceló
+      - ABANDONED: Pasó mucho tiempo
+    */
+
+    if (data.state === 'PROCESSED') {
+      // Si ya se procesó, buscamos el ID del pago real para ver si fue Aprobado o Rechazado
+      // El payment_id suele venir en data.payment.id
+      return {
+        finalizado: true,
+        aprobado: data.payment?.status === 'approved',
+        paymentId: data.payment?.id
+      };
+    } else if (data.state === 'CANCELED' || data.state === 'ABANDONED') {
+      return { finalizado: true, aprobado: false, cancelado: true };
+    }
+
+    // Si sigue OPEN o ON_TERMINAL
+    return { finalizado: false };
+
+  } catch (error) {
+    console.error("Error consultando intent:", error);
+    return { error: "Error de conexión al verificar pago" };
+  }
+}
+
+export async function enviarCobroTerminal(sucursalId: string, monto: number, referencia: string = "VENTA-GENERICA") {
+  try {
+    // 1. Buscamos el ID del dispositivo en la DB usando TU import { db }
+    const sucursal = await db.sucursal.findUnique({
+      where: { id: sucursalId },
+      select: { mpDeviceId: true, nombre: true }
+    });
+
+    if (!sucursal || !sucursal.mpDeviceId) {
+      return { error: `La sucursal ${sucursal?.nombre || ''} no tiene una terminal vinculada.` };
+    }
+
+    const deviceId = sucursal.mpDeviceId;
+    console.log(`Enviando cobro de $${monto} a la terminal ${deviceId}...`);
+
+    // 2. Enviamos la orden a la API de Mercado Pago Point
+    // OJO: El monto va directo, ej: 1500.50
+    const res = await fetch(`https://api.mercadopago.com/point/integration-api/devices/${deviceId}/payment-intents`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN_PROD}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: monto,
+        additional_info: {
+          external_reference: referencia, // Aquí pones el ID de tu Ticket/Mesa
+          print_on_terminal: true // Para que imprima el ticket si la terminal tiene impresora
+        }
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Error MP API:", data);
+      // Errores comunes: Terminal ocupada, terminal apagada, token inválido
+      return { error: data.message || "Error al comunicarse con la terminal." };
+    }
+
+    // Retornamos el ID de la intención de pago (lo necesitaremos para saber si pagó)
+    return {
+      success: true,
+      paymentIntentId: data.id,
+      status: 'waiting_for_payment' // MP devuelve estado inicial
+    };
+
+  } catch (error) {
+    console.error("Error Server Action:", error);
+    return { error: "Error interno al procesar el cobro." };
+  }
+}

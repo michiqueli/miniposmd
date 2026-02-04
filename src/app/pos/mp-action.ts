@@ -2,7 +2,7 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { db } from "@/lib/db";
 
-const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
+const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN_PROD! });
 
 export async function crearPreferenciaMP(ventaId: string) {
   const venta = await db.venta.findUnique({ where: { id: ventaId } });
