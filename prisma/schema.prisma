@@ -18,6 +18,8 @@ model Sucursal {
   stocks   StockSucursal[]
   ventas   Venta[]
   compras  Compra[]
+  
+  mpDeviceId  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -106,4 +108,11 @@ model Compra {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+}
+
+model Configuracion {
+  id          Int     @id @default(autoincrement())
+  sucursal    String
+  mpDeviceId  String? // <--- Aquí guardaremos el ID de la terminal
+  mpAccessToken String? // Opcional: si manejas tokens por cliente
 }

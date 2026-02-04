@@ -6,7 +6,7 @@ export default async function PosPage() {
     orderBy: { nombre: 'asc' }
   });
 
-  const productos = productosRaw.map((p) => ({
+  const productos = productosRaw.map((p: any) => ({
     ...p,
     precioEfectivo: Number(p.precioEfectivo), // Convertimos Decimal a Number
     precioDigital: Number(p.precioDigital),   // Convertimos Decimal a Number
