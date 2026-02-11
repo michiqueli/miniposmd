@@ -10,6 +10,8 @@ import TableControls, { type TableOption } from '@/components/ui/TableControls';
 import Select from '@/components/ui/Select';
 import Input from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/components/ui/toast';
 
 type VentaRow = {
   id: string;
@@ -77,6 +79,9 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
 
   const [ventaAFacturar, setVentaAFacturar] = useState<string | null>(null);
   const [cargandoFactura, setCargandoFactura] = useState(false);
+  const [ventaAAnular, setVentaAAnular] = useState<string | null>(null);
+  const [anulandoVenta, setAnulandoVenta] = useState(false);
+  const { showToast } = useToast();
 
   const filteredAndSortedVentas = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -122,10 +127,19 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
     });
   }, [facturaFilter, metodoFilter, search, sortKey, sucursalFilter, usuarioFilter, ventas]);
 
-  const handleDelete = async (id: string) => {
-    if (confirm('¿Seguro que querés ANULAR esta venta? Esto no se puede deshacer.')) {
-      await anularVenta(id);
-    }
+  const handleDelete = (id: string) => {
+    setVentaAAnular(id);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!ventaAAnular) return;
+
+    setAnulandoVenta(true);
+    await anularVenta(ventaAAnular);
+    setAnulandoVenta(false);
+    setVentaAAnular(null);
+    showToast('Venta anulada correctamente.', 'success');
+    router.refresh();
   };
 
   const handleConfirmFactura = async (datos: { tipo: string, receptorId: string }) => {
@@ -135,11 +149,11 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
     const res = await facturarVenta(ventaAFacturar, datos);
 
     if (res.success) {
-      alert(`✅ Factura Generada: CAE ${res.cae}`);
+      showToast(`Factura generada: CAE ${res.cae}`, 'success');
       setVentaAFacturar(null);
       router.refresh();
     } else {
-      alert(`❌ Error AFIP: ${res.error}`);
+      showToast(`Error AFIP: ${res.error}`, 'error');
     }
     setCargandoFactura(false);
   };
@@ -297,6 +311,16 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
         onClose={() => setVentaAFacturar(null)}
         onConfirm={handleConfirmFactura}
         cargando={cargandoFactura}
+      />
+
+      <ConfirmDialog
+        open={!!ventaAAnular}
+        title="Anular venta"
+        description="¿Seguro que querés anular esta venta? Esta acción no se puede deshacer."
+        confirmLabel="Sí, anular"
+        loading={anulandoVenta}
+        onClose={() => setVentaAAnular(null)}
+        onConfirm={handleConfirmDelete}
       />
     </>
   );

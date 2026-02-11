@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { actualizarRolUsuario, desactivarUsuario } from '@/app/admin/usuarios/actions';
 import Select from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import TableControls, { type TableOption } from '@/components/ui/TableControls';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 type UsuarioRow = {
   id: string;
@@ -41,6 +42,8 @@ export default function UsersTable({ usuarios, sucursalOptions }: UsersTableProp
   const [rolFilter, setRolFilter] = useState('ALL');
   const [sucursalFilter, setSucursalFilter] = useState('ALL');
   const [sortKey, setSortKey] = useState<SortKey>('nombre-asc');
+  const [usuarioADesactivar, setUsuarioADesactivar] = useState<string | null>(null);
+  const deactivateFormRef = useRef<HTMLFormElement | null>(null);
 
   const filteredAndSortedUsers = useMemo(() => {
     const normalizedQuery = search.trim().toLowerCase();
@@ -130,8 +133,8 @@ export default function UsersTable({ usuarios, sucursalOptions }: UsersTableProp
                     <Badge variant={usuario.rol === 'ADMIN' ? 'info' : 'neutral'}>
                       {usuario.rol === 'ADMIN' ? 'ADMIN' : 'CASHIER'}
                     </Badge>
-                    <form action={desactivarUsuario.bind(null, usuario.id)}>
-                      <Button variant="danger" className="text-xs">
+                    <form ref={usuarioADesactivar === usuario.id ? deactivateFormRef : undefined} action={desactivarUsuario.bind(null, usuario.id)}>
+                      <Button type="button" variant="danger" className="text-xs" onClick={() => setUsuarioADesactivar(usuario.id)}>
                         Desactivar
                       </Button>
                     </form>
@@ -150,6 +153,17 @@ export default function UsersTable({ usuarios, sucursalOptions }: UsersTableProp
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={!!usuarioADesactivar}
+        title="Desactivar usuario"
+        description="¿Seguro que querés desactivar este usuario?"
+        confirmLabel="Sí, desactivar"
+        onClose={() => setUsuarioADesactivar(null)}
+        onConfirm={() => {
+          deactivateFormRef.current?.requestSubmit();
+          setUsuarioADesactivar(null);
+        }}
+      />
     </div>
   );
 }
