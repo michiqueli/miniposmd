@@ -1,12 +1,9 @@
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import AdminNav from '@/components/admin/AdminNav';
-import { crearUsuario } from './actions';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import { Button } from '@/components/ui/Button';
 import UsersTable from '@/components/admin/UsersTable';
+import CreateUserForm from '@/components/admin/CreateUserForm';
 
 type UsuarioListado = {
   id: string;
@@ -59,37 +56,7 @@ export default async function AdminUsuariosPage() {
           <p className="text-xs text-slate-500 mt-1">PIN numérico de 4 a 8 dígitos.</p>
         </CardHeader>
         <CardContent>
-          <form action={crearUsuario} className="grid md:grid-cols-4 gap-3 items-end">
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Nombre</label>
-              <Input name="nombre" required className="mt-1" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500">PIN</label>
-              <Input name="pin" required inputMode="numeric" className="mt-1" />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Sucursal</label>
-              <Select name="sucursalId" required className="mt-1">
-                <option value="">Seleccionar...</option>
-                {sucursales.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500">Rol</label>
-              <Select name="rol" className="mt-1">
-                <option value="CASHIER">CASHIER</option>
-                <option value="ADMIN">ADMIN</option>
-              </Select>
-            </div>
-            <Button type="submit" className="md:col-span-4">
-              Crear usuario
-            </Button>
-          </form>
+          <CreateUserForm sucursales={sucursales} />
         </CardContent>
       </Card>
 
