@@ -87,24 +87,17 @@ export default function UsersTable({ usuarios, sucursalOptions }: UsersTableProp
         filterValue={rolFilter}
         filterOptions={ROLE_FILTERS}
         onFilterChange={setRolFilter}
+        extraFilter={{
+          label: 'Sucursal',
+          value: sucursalFilter,
+          options: sucursalOptions,
+          onChange: setSucursalFilter,
+        }}
         sortLabel="Orden"
         sortValue={sortKey}
         sortOptions={SORT_OPTIONS}
         onSortChange={(value) => setSortKey(value as SortKey)}
       />
-
-      <div className="flex justify-end">
-        <div className="w-full max-w-xs">
-          <label className="mb-1 block text-xs font-medium text-slate-500">Sucursal</label>
-          <Select value={sucursalFilter} onChange={(event) => setSucursalFilter(event.target.value)}>
-            {sucursalOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-      </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">

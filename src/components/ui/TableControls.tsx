@@ -8,6 +8,13 @@ export type TableOption = {
   value: string;
 };
 
+type ExtraFilter = {
+  label?: string;
+  value: string;
+  options: TableOption[];
+  onChange: (value: string) => void;
+};
+
 type TableControlsProps = {
   searchPlaceholder?: string;
   searchValue: string;
@@ -16,6 +23,7 @@ type TableControlsProps = {
   filterValue: string;
   filterOptions: TableOption[];
   onFilterChange: (value: string) => void;
+  extraFilter?: ExtraFilter;
   sortLabel?: string;
   sortValue: string;
   sortOptions: TableOption[];
@@ -30,13 +38,16 @@ export default function TableControls({
   filterValue,
   filterOptions,
   onFilterChange,
+  extraFilter,
   sortLabel = 'Ordenar por',
   sortValue,
   sortOptions,
   onSortChange,
 }: TableControlsProps) {
+  const columnsClassName = extraFilter ? 'md:grid-cols-4' : 'md:grid-cols-3';
+
   return (
-    <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-3">
+    <div className={`grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 ${columnsClassName}`}>
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-500">Buscar</label>
         <Input
@@ -56,6 +67,19 @@ export default function TableControls({
           ))}
         </Select>
       </div>
+
+      {extraFilter && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">{extraFilter.label ?? 'Filtro'}</label>
+          <Select value={extraFilter.value} onChange={(event) => extraFilter.onChange(event.target.value)}>
+            {extraFilter.options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       <div>
         <label className="mb-1 block text-xs font-medium text-slate-500">{sortLabel}</label>
