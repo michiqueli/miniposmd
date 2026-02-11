@@ -64,8 +64,10 @@ export default async function ProductosPage() {
                 <CardContent>
                     <form action={crearProducto} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Input name="nombre" placeholder="Nombre" required />
-
+                            <div>
+                                <label className="text-xs text-gray-500 ml-1">Nombre</label>
+                                <Input name="nombre" placeholder="Nombre" required />
+                            </div>
                             <div>
                                 <label className="text-xs text-gray-500 ml-1">Precio Efectivo</label>
                                 <Input name="precioEfectivo" type="number" step="0.01" min="0" placeholder="$ Efectivo" required />
