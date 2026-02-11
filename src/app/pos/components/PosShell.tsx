@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
-import { CheckCircle2, Loader2, Smartphone } from 'lucide-react'
+import { Banknote, CheckCircle2, CreditCard, Loader2, Smartphone } from 'lucide-react'
 import { enviarCobroTerminal, consultarEstadoPagoIntent } from '@/app/actions/mercadopago'
 import { registrarVenta, facturarVenta } from '../actions'
 import ProductGrid from '@/components/pos/ProductGrid'
@@ -50,6 +50,22 @@ export default function PosShell({
       }
       return [...prev, { ...producto, cantidad: 1 }]
     })
+  }
+
+  const sumarProducto = (itemId: string) => {
+    setCarrito(prev => prev.map(item => item.id === itemId ? { ...item, cantidad: item.cantidad + 1 } : item))
+  }
+
+  const restarProducto = (itemId: string) => {
+    setCarrito(prev => prev.flatMap(item => {
+      if (item.id !== itemId) return [item]
+      if (item.cantidad <= 1) return []
+      return [{ ...item, cantidad: item.cantidad - 1 }]
+    }))
+  }
+
+  const quitarProducto = (itemId: string) => {
+    setCarrito(prev => prev.filter(item => item.id !== itemId))
   }
 
   const total = carrito.reduce((acc, item) => {
@@ -155,18 +171,54 @@ export default function PosShell({
     <div className="flex h-screen bg-slate-100 overflow-hidden">
       <PosTopBar usuarioNombre={usuarioNombre} usuarioRole={usuarioRole} sucursalId={sucursalId} />
 
-      <div className="w-2/3 p-4 overflow-y-auto pt-24">
-        <ProductGrid productos={productos} metodoPago={metodoPago} onAdd={agregarAlCarrito} />
+      <div className="w-2/3 pt-24 flex flex-col">
+        <div className="flex-1 p-4 overflow-y-auto pb-6">
+          <ProductGrid productos={productos} metodoPago={metodoPago} onAdd={agregarAlCarrito} />
+        </div>
+
+        <div className="p-4 bg-slate-100 border-t border-slate-200">
+          <div className="rounded-3xl bg-white border border-slate-200 shadow-md p-4">
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                onClick={() => setMetodoPago('EFECTIVO')}
+                className={`h-28 rounded-2xl font-black border-2 transition-all flex flex-col items-center justify-center text-xl ${metodoPago === 'EFECTIVO' ? 'border-green-500 bg-green-50 text-green-700 shadow-sm' : 'border-slate-200 text-slate-500 bg-slate-50'}`}
+              >
+                <Banknote size={28} className="mb-2" />
+                EFECTIVO
+              </button>
+
+              <button
+                onClick={() => setMetodoPago('TERMINAL')}
+                className={`h-28 rounded-2xl font-black border-2 transition-all flex flex-col items-center justify-center text-xl ${metodoPago === 'TERMINAL' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-500 bg-slate-50'}`}
+              >
+                <CreditCard size={28} className="mb-2" />
+                TERMINAL MP
+              </button>
+
+              <button
+                disabled={cargando || carrito.length === 0}
+                onClick={handleFinalizarVenta}
+                className="h-28 rounded-2xl font-black bg-orange-500 hover:bg-orange-400 disabled:bg-slate-300 disabled:text-slate-500 text-white text-3xl shadow-lg transition-all active:scale-95"
+              >
+                {cargando ? 'COBRANDO...' : 'COBRAR'}
+              </button>
+            </div>
+
+            <div className="mt-3 text-right">
+              <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Total a pagar</span>
+              <p className="text-4xl font-black text-slate-800">${total.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <CartPanel
         carrito={carrito}
         metodoPago={metodoPago}
-        setMetodoPago={setMetodoPago}
-        total={total}
-        cargando={cargando}
         onClear={() => setCarrito([])}
-        onCheckout={handleFinalizarVenta}
+        onIncreaseItem={sumarProducto}
+        onDecreaseItem={restarProducto}
+        onRemoveItem={quitarProducto}
       />
 
       {esperandoPago && (
