@@ -8,7 +8,7 @@ export type TableOption = {
   value: string;
 };
 
-type ExtraFilter = {
+export type ExtraFilter = {
   label?: string;
   value: string;
   options: TableOption[];
@@ -24,6 +24,7 @@ type TableControlsProps = {
   filterOptions: TableOption[];
   onFilterChange: (value: string) => void;
   extraFilter?: ExtraFilter;
+  extraFilters?: ExtraFilter[];
   sortLabel?: string;
   sortValue: string;
   sortOptions: TableOption[];
@@ -39,57 +40,60 @@ export default function TableControls({
   filterOptions,
   onFilterChange,
   extraFilter,
+  extraFilters,
   sortLabel = 'Ordenar por',
   sortValue,
   sortOptions,
   onSortChange,
 }: TableControlsProps) {
-  const columnsClassName = extraFilter ? 'md:grid-cols-4' : 'md:grid-cols-3';
+  const secondaryFilters = [...(extraFilters ?? []), ...(extraFilter ? [extraFilter] : [])];
 
   return (
-    <div className={`grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 ${columnsClassName}`}>
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-500">Buscar</label>
-        <Input
-          value={searchValue}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder={searchPlaceholder}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-500">{filterLabel}</label>
-        <Select value={filterValue} onChange={(event) => onFilterChange(event.target.value)}>
-          {filterOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      {extraFilter && (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">{extraFilter.label ?? 'Filtro'}</label>
-          <Select value={extraFilter.value} onChange={(event) => extraFilter.onChange(event.target.value)}>
-            {extraFilter.options.map((option) => (
+          <label className="mb-1 block text-xs font-medium text-slate-500">Buscar</label>
+          <Input
+            value={searchValue}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={searchPlaceholder}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">{filterLabel}</label>
+          <Select value={filterValue} onChange={(event) => onFilterChange(event.target.value)}>
+            {filterOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
           </Select>
         </div>
-      )}
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-500">{sortLabel}</label>
-        <Select value={sortValue} onChange={(event) => onSortChange(event.target.value)}>
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </Select>
+        {secondaryFilters.map((filter, index) => (
+          <div key={`${filter.label ?? 'filtro'}-${index}`}>
+            <label className="mb-1 block text-xs font-medium text-slate-500">{filter.label ?? 'Filtro'}</label>
+            <Select value={filter.value} onChange={(event) => filter.onChange(event.target.value)}>
+              {filter.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ))}
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-500">{sortLabel}</label>
+          <Select value={sortValue} onChange={(event) => onSortChange(event.target.value)}>
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
     </div>
   );
