@@ -116,7 +116,7 @@ export default function UsersTable({ usuarios, sucursalOptions }: UsersTableProp
                 <td className="px-4 py-3 text-slate-600">{usuario.sucursalNombre}</td>
                 <td className="px-4 py-3">
                   <form action={actualizarRolUsuario.bind(null, usuario.id)} className="flex items-center gap-2">
-                    <Select name="rol" defaultValue={usuario.rol === 'ADMIN' ? 'ADMIN' : 'CASHIER'} className="max-w-[140px]">
+                    <Select name="rol" defaultValue={usuario.rol === 'ADMIN' ? 'ADMIN' : 'CASHIER'} className="max-w-35">
                       <option value="CASHIER">CASHIER</option>
                       <option value="ADMIN">ADMIN</option>
                     </Select>
