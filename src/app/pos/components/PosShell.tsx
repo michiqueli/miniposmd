@@ -1,11 +1,25 @@
 'use client'
 import { useState, useRef } from 'react'
-import { ShoppingCart, Trash2, CreditCard, Banknote, CheckCircle2, Smartphone, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { ShoppingCart, Trash2, CreditCard, Banknote, CheckCircle2, Loader2, LogOut, Smartphone } from 'lucide-react'
 // Eliminamos imports de QR viejo y traemos los nuevos
 import { enviarCobroTerminal, consultarEstadoPagoIntent } from '@/app/actions/mercadopago'
 import { registrarVenta, facturarVenta } from '../actions'
+import { logoutAction } from '@/app/actions/auth'
 
-export default function PosShell({ productos, sucursalId, usuarioId }: { productos: any[], sucursalId: string, usuarioId: string }) {
+export default function PosShell({
+    productos,
+    sucursalId,
+    usuarioId,
+    usuarioNombre,
+    usuarioRole,
+}: {
+    productos: any[],
+    sucursalId: string,
+    usuarioId: string,
+    usuarioNombre: string,
+    usuarioRole: 'ADMIN' | 'CASHIER',
+}) {
     const [carrito, setCarrito] = useState<any[]>([])
     // Solo dos métodos ahora: Efectivo o la Terminal
     const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TERMINAL'>('EFECTIVO')
@@ -21,10 +35,6 @@ export default function PosShell({ productos, sucursalId, usuarioId }: { product
 
     // Refs para controlar el polling y poder cancelarlo
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Hardcodeo temporal (según tu código original)
-    sucursalId = '5fdbe000-6d63-4298-a919-eeaf7af75582'; 
-    usuarioId = 'b5ffac6f-5390-4c64-abed-3424b7945cb8'; 
 
     const [ventaIdActual, setVentaIdActual] = useState<string | null>(null);
     const [cargando, setCargando] = useState(false);
@@ -72,9 +82,7 @@ export default function PosShell({ productos, sucursalId, usuarioId }: { product
         const res = await registrarVenta({
             items: carrito,
             total,
-            metodoPago, 
-            sucursalId,
-            usuarioId
+            metodoPago
         });
 
         if (res.success && res.ventaId) {
@@ -155,8 +163,26 @@ export default function PosShell({ productos, sucursalId, usuarioId }: { product
 
     return (
         <div className="flex h-screen bg-slate-100 overflow-hidden">
+            <div className="fixed top-4 left-4 right-4 z-40 flex justify-between items-center bg-white/95 border border-slate-200 rounded-xl px-4 py-2 shadow-sm">
+                <div>
+                    <p className="font-bold text-slate-700">{usuarioNombre}</p>
+                    <p className="text-xs text-slate-500">{usuarioRole} · Sucursal {sucursalId.slice(0, 8)}...</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    {usuarioRole === 'ADMIN' && (
+                        <Link href="/admin/ventas" className="text-sm px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 font-semibold text-slate-700">
+                            Ir a Admin
+                        </Link>
+                    )}
+                    <form action={logoutAction}>
+                        <button className="text-sm px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 font-semibold text-red-700 flex items-center gap-1">
+                            <LogOut size={14} /> Salir
+                        </button>
+                    </form>
+                </div>
+            </div>
             {/* IZQUIERDA: PRODUCTOS */}
-            <div className="w-2/3 p-4 overflow-y-auto">
+            <div className="w-2/3 p-4 overflow-y-auto pt-24">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {productos.map((p) => (
                         <button
@@ -174,7 +200,7 @@ export default function PosShell({ productos, sucursalId, usuarioId }: { product
             </div>
 
             {/* DERECHA: CARRITO Y PAGO */}
-            <div className="w-1/3 bg-white border-l shadow-xl flex flex-col">
+            <div className="w-1/3 bg-white border-l shadow-xl flex flex-col pt-20">
                 <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
                     <h2 className="font-bold flex items-center gap-2 text-slate-700"><ShoppingCart size={20} /> Carrito</h2>
                     <button onClick={() => setCarrito([])} className="text-red-400 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
