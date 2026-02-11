@@ -2,10 +2,12 @@
 
 // 1. IMPORTA TU DB CORRECTAMENTE (NO HAGAS NEW PRISMACLIENT)
 import { db } from "@/lib/db";
+import { requireRole } from "@/lib/auth";
 
 const MP_TOKEN = process.env.MP_ACCESS_TOKEN_PROD;
 
 export async function getTerminalesMP() {
+  await requireRole(['ADMIN']);
   if (!MP_TOKEN) return { error: "Falta el Access Token de Mercado Pago" };
 
   try {
@@ -34,6 +36,7 @@ export async function getTerminalesMP() {
 
 // --- Nueva: Obtener lista de Sucursales ---
 export async function getSucursales() {
+  await requireRole(['ADMIN']);
   try {
     const sucursales = await db.sucursal.findMany({
       orderBy: { nombre: 'asc' },
@@ -47,6 +50,7 @@ export async function getSucursales() {
 }
 
 export async function vincularTerminal(deviceId: string, sucursalId: string) {
+  await requireRole(['ADMIN']);
   try {
     // Primero: Opcional - Desvincular esta terminal de cualquier otra sucursal para evitar duplicados
     await db.sucursal.updateMany({
@@ -68,6 +72,7 @@ export async function vincularTerminal(deviceId: string, sucursalId: string) {
 }
 
 export async function consultarEstadoPagoIntent(paymentIntentId: string) {
+  await requireRole(['ADMIN', 'CASHIER']);
   try {
     // Consultamos el estado de la Intención de Pago (lo que mandamos a la maquinita)
     const res = await fetch(`https://api.mercadopago.com/point/integration-api/payment-intents/${paymentIntentId}`, {
@@ -111,6 +116,7 @@ export async function consultarEstadoPagoIntent(paymentIntentId: string) {
 }
 
 export async function enviarCobroTerminal(sucursalId: string, monto: number, referencia: string = "VENTA-GENERICA") {
+  await requireRole(['ADMIN', 'CASHIER']);
   try {
     // 1. Buscamos el ID del dispositivo en la DB usando TU import { db }
     const sucursal = await db.sucursal.findUnique({

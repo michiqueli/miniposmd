@@ -30,7 +30,7 @@ model Usuario {
   id     String @id @default(uuid())
   nombre String
   pin    String
-  rol    String // "ADMIN" o "CAJERO"
+  rol    String // "ADMIN" o "CASHIER"
 
   sucursalId String
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
