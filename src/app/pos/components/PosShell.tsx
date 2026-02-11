@@ -6,6 +6,8 @@ import { registrarVenta, facturarVenta } from '../actions'
 import ProductGrid from '@/components/pos/ProductGrid'
 import CartPanel from '@/components/pos/CartPanel'
 import PosTopBar from '@/components/pos/PosTopBar'
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/components/ui/toast';
 
 type Producto = {
   id: string;
@@ -37,6 +39,8 @@ export default function PosShell({
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [ventaIdActual, setVentaIdActual] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [showEfectivoConfirm, setShowEfectivoConfirm] = useState(false);
+  const { showToast } = useToast();
 
   const agregarAlCarrito = (producto: Producto) => {
     setCarrito(prev => {
@@ -66,11 +70,14 @@ export default function PosShell({
   const cancelarOperacion = () => {
     if (pollingRef.current) clearInterval(pollingRef.current);
     setEsperandoPago(false);
-    alert("Operación cancelada en pantalla (la terminal puede tardar unos segundos en volver al inicio).");
+    showToast('Operación cancelada en pantalla (la terminal puede tardar unos segundos en volver al inicio).');
   }
 
   const handleFinalizarVenta = async () => {
-    if (carrito.length === 0) return alert('Carrito vacío');
+    if (carrito.length === 0) {
+      showToast('Carrito vacío', 'error');
+      return;
+    }
     setCargando(true);
 
     const res = await registrarVenta({
@@ -89,7 +96,7 @@ export default function PosShell({
         const cobroRes = await enviarCobroTerminal(sucursalId, total, res.ventaId);
 
         if (cobroRes.error) {
-          alert('Error Comunicación: ' + cobroRes.error);
+          showToast('Error comunicación: ' + cobroRes.error, 'error');
           setEsperandoPago(false);
           setCargando(false);
           return;
@@ -105,28 +112,29 @@ export default function PosShell({
 
             if (estado.aprobado) {
               setEsperandoPago(false);
-              alert('¡PAGO APROBADO! ✅');
+              showToast('¡Pago aprobado! ✅', 'success');
               setShowFacturacion(true);
             } else {
               setEsperandoPago(false);
-              alert('❌ El pago fue rechazado o cancelado en la terminal.');
+              showToast('El pago fue rechazado o cancelado en la terminal.', 'error');
             }
           }
         }, 3000);
       } else {
-        const quiereFactura = confirm('Venta Efectivo registrada. ¿Facturar?');
-        if (quiereFactura) setShowFacturacion(true);
-        else resetPOS();
+        setShowEfectivoConfirm(true);
       }
     } else {
-      alert('Error al guardar venta: ' + res.error);
+      showToast('Error al guardar venta: ' + res.error, 'error');
     }
     setCargando(false);
   };
 
   const handleProcesarFactura = async () => {
     if (!ventaIdActual) return;
-    if (tipoReceptor === 'CUIL' && idReceptor.length < 11) return alert('CUIT inválido');
+    if (tipoReceptor === 'CUIL' && idReceptor.length < 11) {
+      showToast('CUIT inválido', 'error');
+      return;
+    }
 
     setCargando(true);
     const res = await facturarVenta(ventaIdActual, {
@@ -135,10 +143,10 @@ export default function PosShell({
     });
 
     if (res.success) {
-      alert(`Factura ${tipoFactura} generada: Nro ${res.nro}\nCAE: ${res.cae}`);
+      showToast(`Factura ${tipoFactura} generada: Nro ${res.nro} - CAE: ${res.cae}`, 'success');
       resetPOS();
     } else {
-      alert('Error AFIP: ' + res.error);
+      showToast('Error AFIP: ' + res.error, 'error');
     }
     setCargando(false);
   };
@@ -234,6 +242,22 @@ export default function PosShell({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={showEfectivoConfirm}
+        title="Venta en efectivo registrada"
+        description="¿Querés generar factura ahora?"
+        confirmLabel="Sí, facturar"
+        cancelLabel="No, omitir"
+        onClose={() => {
+          setShowEfectivoConfirm(false);
+          resetPOS();
+        }}
+        onConfirm={() => {
+          setShowEfectivoConfirm(false);
+          setShowFacturacion(true);
+        }}
+      />
     </div>
   )
 }
