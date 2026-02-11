@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import VentasTable from "./components/VentasTable";
+import VentasTable from "@/components/admin/VentasTable";
 import { requireRole } from '@/lib/auth';
 import AdminNav from '@/components/admin/AdminNav';
 

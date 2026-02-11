@@ -1,4 +1,4 @@
-import DeviceManager from "@/components/deviceManager/DeviceManager";
+import DeviceManager from "@/components/admin/deviceManager/DeviceManager";
 import { requireRole } from '@/lib/auth';
 import AdminNav from '@/components/admin/AdminNav';
 
