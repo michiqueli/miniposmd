@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
+import { useToast } from '@/components/ui/toast';
 
 interface FacturacionModalProps {
   isOpen: boolean;
@@ -14,10 +15,12 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
   const [tipoReceptor, setTipoReceptor] = useState<'CF' | 'CUIL'>('CF');
   const [idReceptor, setIdReceptor] = useState('');
   const [tipoFactura, setTipoFactura] = useState<'A' | 'B'>('B');
+  const { showToast } = useToast();
 
   const handleConfirm = () => {
     if (tipoReceptor === 'CUIL' && idReceptor.length < 11) {
-      return alert('El CUIT debe tener 11 dígitos');
+      showToast('El CUIT debe tener 11 dígitos', 'error');
+      return;
     }
     onConfirm({
       tipo: tipoFactura,
