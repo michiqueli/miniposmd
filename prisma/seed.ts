@@ -17,9 +17,23 @@ async function main() {
     where: { id: "admin-inicial" },
     update: {},
     create: {
+      id: "admin-inicial",
       nombre: "Michi Admin",
       pin: "1234",
       rol: "ADMIN",
+      sucursalId: sucursal.id,
+    },
+  });
+
+
+  await db.usuario.upsert({
+    where: { id: "cajero-inicial" },
+    update: {},
+    create: {
+      id: "cajero-inicial",
+      nombre: "Caja 1",
+      pin: "1234",
+      rol: "CASHIER",
       sucursalId: sucursal.id,
     },
   });

@@ -1,14 +1,17 @@
 import { db } from "@/lib/db";
 import { crearProducto } from "./actions";
+import { requireRole } from '@/lib/auth';
+import AdminNav from '@/components/admin/AdminNav';
 
 export default async function ProductosPage() {
-    const productos = await db.producto.findMany();
+    await requireRole(['ADMIN']);
+    const productos = await db.producto.findMany({ where: { deletedAt: null } });
 
     return (
         <div className="p-8">
+            <AdminNav />
             <h1 className="text-2xl font-bold mb-6">Gestionar Productos (Pollería)</h1>
 
-            {/* Formulario simple */}
             <form action={crearProducto} className="flex flex-wrap gap-4 mb-8 bg-slate-100 p-4 rounded-lg">
                 <input name="nombre" placeholder="Nombre" className="p-2 border rounded flex-1" required />
 
@@ -33,7 +36,6 @@ export default async function ProductosPage() {
                 </button>
             </form>
 
-            {/* En la lista de productos, mostramos ambos */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {productos.map((p: any) => (
                     <div key={p.id} className="border p-4 rounded-xl shadow-sm bg-white border-slate-200">
