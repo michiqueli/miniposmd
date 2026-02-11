@@ -53,11 +53,11 @@ export default async function ProductosPage() {
     }));
 
     return (
-        <div className="p-8 space-y-6">
+        <div className="p-8 min-h-screen bg-slate-50">
             <AdminNav />
-            <h1 className="text-2xl font-bold">Gestionar Productos (Pollería)</h1>
+            <h1 className="text-3xl font-bold text-slate-800 mb-6">Gestión de Productos</h1>
 
-            <Card>
+            <Card className="mb-6">
                 <CardHeader>
                     <h2 className="text-lg font-semibold">Crear producto</h2>
                 </CardHeader>
