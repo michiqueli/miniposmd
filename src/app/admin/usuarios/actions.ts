@@ -3,6 +3,7 @@
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { hashPin, isStrongPin } from '@/lib/security';
 
 export async function crearUsuario(formData: FormData) {
   await requireRole(['ADMIN']);
@@ -12,14 +13,14 @@ export async function crearUsuario(formData: FormData) {
   const sucursalId = String(formData.get('sucursalId') || '').trim();
   const rol = String(formData.get('rol') || '').trim();
 
-  if (!nombre || !pin || !sucursalId || !['ADMIN', 'CASHIER'].includes(rol)) {
-    throw new Error('Datos inválidos para crear usuario');
+  if (nombre.length < 3 || !isStrongPin(pin) || !sucursalId || !['ADMIN', 'CASHIER'].includes(rol)) {
+    throw new Error('Datos inválidos para crear usuario. El PIN debe ser numérico de 4 a 8 dígitos.');
   }
 
   await db.usuario.create({
     data: {
       nombre,
-      pin,
+      pin: hashPin(pin),
       sucursalId,
       rol,
     },
@@ -28,9 +29,10 @@ export async function crearUsuario(formData: FormData) {
   revalidatePath('/admin/usuarios');
 }
 
-export async function actualizarRolUsuario(userId: string, rol: string) {
+export async function actualizarRolUsuario(userId: string, formData: FormData) {
   await requireRole(['ADMIN']);
 
+  const rol = String(formData.get('rol') || '').trim();
   if (!['ADMIN', 'CASHIER'].includes(rol)) {
     throw new Error('Rol inválido');
   }

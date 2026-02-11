@@ -2,6 +2,10 @@ import { db } from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { loginAction } from '@/app/actions/auth';
+import { Card, CardContent, CardHeader } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
+import Input from '@/components/ui/Input';
 
 export default async function LoginPage({
   searchParams,
@@ -22,54 +26,51 @@ export default async function LoginPage({
   });
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
-        <h1 className="text-2xl font-black text-slate-800 mb-1">Ingreso MiniPOS</h1>
-        <p className="text-sm text-slate-500 mb-6">Seleccioná usuario y PIN para continuar.</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader className="border-none pb-2">
+          <h1 className="text-2xl font-black text-slate-800 mb-1">Ingreso MiniPOS</h1>
+          <p className="text-sm text-slate-500">Seleccioná usuario y PIN para continuar.</p>
+        </CardHeader>
 
-        {params.error && (
-          <div className="mb-4 rounded-lg bg-red-50 text-red-700 px-3 py-2 text-sm border border-red-100">
-            Usuario o PIN inválidos.
-          </div>
-        )}
+        <CardContent>
+          {params.error && (
+            <div className="mb-4 rounded-lg bg-red-50 text-red-700 px-3 py-2 text-sm border border-red-100">
+              Usuario o PIN inválidos.
+            </div>
+          )}
 
-        <form action={loginAction} className="space-y-4">
-          <div>
-            <label className="text-xs font-bold text-slate-500 uppercase">Usuario</label>
-            <select
-              name="userId"
-              required
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-white"
-            >
-              <option value="">Seleccionar usuario...</option>
-              {usuarios.map((u: any) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre} ({u.rol === 'ADMIN' ? 'ADMIN' : 'CASHIER'})
-                </option>
-              ))}
-            </select>
-          </div>
+          <form action={loginAction} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">Usuario</label>
+              <Select name="userId" required className="mt-1">
+                <option value="">Seleccionar usuario...</option>
+                {usuarios.map((u: any) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nombre} ({u.rol === 'ADMIN' ? 'ADMIN' : 'CASHIER'})
+                  </option>
+                ))}
+              </Select>
+            </div>
 
-          <div>
-            <label className="text-xs font-bold text-slate-500 uppercase">PIN</label>
-            <input
-              name="pin"
-              required
-              type="password"
-              inputMode="numeric"
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-              placeholder="••••"
-            />
-          </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase">PIN</label>
+              <Input
+                name="pin"
+                required
+                type="password"
+                inputMode="numeric"
+                className="mt-1"
+                placeholder="••••"
+              />
+            </div>
 
-          <button
-            type="submit"
-            className="w-full rounded-xl bg-slate-900 text-white font-bold py-2.5 hover:bg-slate-800 transition-colors"
-          >
-            Ingresar
-          </button>
-        </form>
-      </div>
+            <Button type="submit" className="w-full py-2.5">
+              Ingresar
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

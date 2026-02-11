@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
+import { hashPin, verifyPin } from '@/lib/security';
 
 export type AppRole = 'ADMIN' | 'CASHIER';
 
@@ -13,15 +14,19 @@ export type SessionUser = {
 };
 
 const SESSION_COOKIE = 'minipos_session';
-const SESSION_TTL_MS = 1000 * 60 * 60 * 12; // 12 horas
+const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 
 function getSessionSecret() {
-  return process.env.AUTH_SECRET || 'dev-only-secret-change-me';
+  const secret = process.env.AUTH_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('AUTH_SECRET es obligatorio en producción');
+  }
+  return secret || 'local-dev-secret';
 }
 
 function normalizeRole(role: string): AppRole {
   if (role === 'ADMIN') return 'ADMIN';
-  return 'CASHIER'; // Compatibilidad con "CAJERO" histórico
+  return 'CASHIER';
 }
 
 function sign(payloadBase64: string) {
@@ -85,8 +90,15 @@ export async function createSessionForUser(userId: string, plainPin: string) {
     },
   });
 
-  if (!user || user.pin !== plainPin) {
+  if (!user || !verifyPin(plainPin, user.pin)) {
     return { ok: false as const, error: 'Credenciales inválidas' };
+  }
+
+  if (!user.pin.startsWith('scrypt$')) {
+    await db.usuario.update({
+      where: { id: user.id },
+      data: { pin: hashPin(plainPin) },
+    });
   }
 
   const sessionToken = encodeSession({

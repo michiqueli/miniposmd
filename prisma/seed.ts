@@ -1,4 +1,5 @@
 import { db } from "../src/lib/db";
+import { hashPin } from "../src/lib/security";
 
 async function main() {
   const sucursal = await db.sucursal.upsert({
@@ -19,12 +20,11 @@ async function main() {
     create: {
       id: "admin-inicial",
       nombre: "Michi Admin",
-      pin: "1234",
+      pin: hashPin("1234"),
       rol: "ADMIN",
       sucursalId: sucursal.id,
     },
   });
-
 
   await db.usuario.upsert({
     where: { id: "cajero-inicial" },
@@ -32,7 +32,7 @@ async function main() {
     create: {
       id: "cajero-inicial",
       nombre: "Caja 1",
-      pin: "1234",
+      pin: hashPin("1234"),
       rol: "CASHIER",
       sucursalId: sucursal.id,
     },
