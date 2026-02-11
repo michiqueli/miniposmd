@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { actualizarProducto, eliminarProducto } from '@/app/admin/productos/actions';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import TableControls, { type TableOption } from '@/components/ui/TableControls';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 type ProductoRow = {
   id: string;
@@ -55,6 +56,8 @@ export default function ProductsTable({ productos, sucursales }: ProductsTablePr
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [sortKey, setSortKey] = useState<SortKey>('name-asc');
+  const [productoAEliminar, setProductoAEliminar] = useState<string | null>(null);
+  const deleteFormRef = useRef<HTMLFormElement | null>(null);
 
   const filteredAndSortedProducts = useMemo(() => {
     const normalizedQuery = search.trim().toLowerCase();
@@ -205,9 +208,9 @@ export default function ProductsTable({ productos, sucursales }: ProductsTablePr
                         </form>
                       </details>
 
-                      <form action={eliminarProducto}>
+                      <form ref={productoAEliminar === producto.id ? deleteFormRef : undefined} action={eliminarProducto}>
                         <input type="hidden" name="productoId" value={producto.id} />
-                        <Button type="submit" variant="danger" size="sm">
+                        <Button type="button" variant="danger" size="sm" onClick={() => setProductoAEliminar(producto.id)}>
                           Eliminar
                         </Button>
                       </form>
@@ -227,6 +230,17 @@ export default function ProductsTable({ productos, sucursales }: ProductsTablePr
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={!!productoAEliminar}
+        title="Eliminar producto"
+        description="¿Seguro que querés eliminar este producto? Esta acción lo desactiva del panel."
+        confirmLabel="Sí, eliminar"
+        onClose={() => setProductoAEliminar(null)}
+        onConfirm={() => {
+          deleteFormRef.current?.requestSubmit();
+          setProductoAEliminar(null);
+        }}
+      />
     </div>
   );
 }
