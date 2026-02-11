@@ -1,7 +1,6 @@
 'use client';
 
-import { useId } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/Dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 
 type ConfirmDialogProps = {
@@ -25,24 +24,11 @@ export default function ConfirmDialog({
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
-  const titleId = useId();
-  const descriptionId = useId();
-
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-      <DialogContent
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        className="max-w-md p-6"
-      >
-        <h3 id={titleId} className="text-lg font-bold text-slate-900">
-          {title}
-        </h3>
-        <p id={descriptionId} className="mt-2 text-sm text-slate-600">
-          {description}
-        </p>
+      <DialogContent className="max-w-md p-6" role="alertdialog" aria-modal="true">
+        <DialogTitle className="text-lg font-bold text-slate-900">{title}</DialogTitle>
+        <DialogDescription className="mt-2 text-sm text-slate-600">{description}</DialogDescription>
 
         <div className="mt-6 flex justify-end gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={onClose}>

@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/Dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/Dialog';
 import { useToast } from '@/components/ui/toast';
 
 interface FacturacionModalProps {
@@ -37,8 +37,8 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
             <CheckCircle2 size={24} />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-slate-800 leading-none">AFIP</h2>
-            <p className="text-slate-400 text-sm font-bold">Emitir Comprobante Legal</p>
+            <DialogTitle className="text-2xl font-black text-slate-800 leading-none">AFIP</DialogTitle>
+            <DialogDescription className="text-slate-400 text-sm font-bold">Emitir Comprobante Legal</DialogDescription>
           </div>
         </div>
 
