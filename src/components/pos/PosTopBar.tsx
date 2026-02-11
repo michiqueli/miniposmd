@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { LogOut } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 
 export default function PosTopBar({
   usuarioNombre,

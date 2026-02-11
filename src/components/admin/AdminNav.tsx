@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { logoutAction } from '@/app/actions/auth';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 
 const links = [
   { href: '/admin/ventas', label: 'Ventas' },

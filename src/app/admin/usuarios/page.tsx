@@ -5,7 +5,7 @@ import { actualizarRolUsuario, crearUsuario, desactivarUsuario } from './actions
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 
 export default async function AdminUsuariosPage() {

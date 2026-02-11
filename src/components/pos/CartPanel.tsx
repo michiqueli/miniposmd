@@ -1,5 +1,5 @@
 import { ShoppingCart, Trash2, CreditCard, Banknote, Loader2 } from 'lucide-react';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
 export default function CartPanel({

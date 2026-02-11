@@ -5,7 +5,7 @@ import AdminNav from '@/components/admin/AdminNav';
 import { Card } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 
 export default async function ProductosPage() {
     await requireRole(['ADMIN']);
