@@ -1,23 +1,26 @@
-import { ShoppingCart, Trash2, CreditCard, Banknote, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { ShoppingCart, Trash2, Minus, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
 export default function CartPanel({
   carrito,
   metodoPago,
-  setMetodoPago,
-  total,
-  cargando,
   onClear,
-  onCheckout,
+  onIncreaseItem,
+  onDecreaseItem,
+  onRemoveItem,
 }: {
-  carrito: any[];
+  carrito: Array<{
+    id: string;
+    nombre: string;
+    precioEfectivo: number;
+    precioDigital: number;
+    cantidad: number;
+  }>;
   metodoPago: 'EFECTIVO' | 'TERMINAL';
-  setMetodoPago: (value: 'EFECTIVO' | 'TERMINAL') => void;
-  total: number;
-  cargando: boolean;
   onClear: () => void;
-  onCheckout: () => void;
+  onIncreaseItem: (itemId: string) => void;
+  onDecreaseItem: (itemId: string) => void;
+  onRemoveItem: (itemId: string) => void;
 }) {
   return (
     <div className="w-1/3 bg-white border-l shadow-xl flex flex-col pt-20">
@@ -27,45 +30,52 @@ export default function CartPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {carrito.length === 0 && (
+          <p className="text-center text-sm font-semibold text-slate-400 pt-10">Todavía no hay productos en el carrito.</p>
+        )}
+
         {carrito.map(item => (
-          <Card key={item.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-none">
-            <div className="flex flex-col">
-              <span className="font-bold text-slate-700 text-sm uppercase">{item.nombre}</span>
-              <span className="text-xs font-bold text-slate-400">CANT: {item.cantidad}</span>
+          <Card key={item.id} className="bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-none">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col">
+                <span className="font-bold text-slate-700 text-sm uppercase leading-tight">{item.nombre}</span>
+                <span className="text-xs font-bold text-slate-400 mt-1">
+                  ${metodoPago === 'EFECTIVO' ? Number(item.precioEfectivo).toFixed(2) : Number(item.precioDigital).toFixed(2)} c/u
+                </span>
+              </div>
+              <span className="font-black text-slate-700 text-lg">
+                ${((metodoPago === 'EFECTIVO' ? item.precioEfectivo : item.precioDigital) * item.cantidad).toFixed(2)}
+              </span>
             </div>
-            <span className="font-black text-slate-700">${((metodoPago === 'EFECTIVO' ? item.precioEfectivo : item.precioDigital) * item.cantidad).toFixed(2)}</span>
+
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-2 bg-white rounded-xl border border-slate-200 p-1">
+                <button
+                  onClick={() => onDecreaseItem(item.id)}
+                  className="h-9 w-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200"
+                  aria-label={`Restar una unidad de ${item.nombre}`}
+                >
+                  <Minus size={16} />
+                </button>
+                <span className="min-w-8 text-center font-black text-slate-700">{item.cantidad}</span>
+                <button
+                  onClick={() => onIncreaseItem(item.id)}
+                  className="h-9 w-9 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200"
+                  aria-label={`Sumar una unidad de ${item.nombre}`}
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+
+              <button
+                onClick={() => onRemoveItem(item.id)}
+                className="inline-flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600"
+              >
+                <Trash2 size={14} /> Quitar
+              </button>
+            </div>
           </Card>
         ))}
-      </div>
-
-      <div className="p-4 grid grid-cols-2 gap-3 bg-slate-50">
-        <button
-          onClick={() => setMetodoPago('EFECTIVO')}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl font-black border-2 transition-all ${metodoPago === 'EFECTIVO' ? 'border-green-500 bg-white text-green-600 shadow-sm' : 'border-transparent text-slate-400 hover:bg-slate-100'}`}
-        >
-          <Banknote size={24} className="mb-2"/> EFECTIVO
-        </button>
-
-        <button
-          onClick={() => setMetodoPago('TERMINAL')}
-          className={`flex flex-col items-center justify-center p-4 rounded-2xl font-black border-2 transition-all ${metodoPago === 'TERMINAL' ? 'border-blue-500 bg-white text-blue-600 shadow-sm' : 'border-transparent text-slate-400 hover:bg-slate-100'}`}
-        >
-          <CreditCard size={24} className="mb-2"/> TERMINAL MP
-        </button>
-      </div>
-
-      <div className="p-6 bg-slate-900 text-white rounded-t-[2.5rem] shadow-2xl">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">Total a Pagar</span>
-          <span className="text-4xl font-black text-orange-400 tracking-tight">${total.toFixed(2)}</span>
-        </div>
-        <Button
-          disabled={cargando || carrito.length === 0}
-          onClick={onCheckout}
-          className="w-full bg-orange-500 hover:bg-orange-400 disabled:bg-slate-700 text-white py-5 rounded-2xl font-black text-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
-        >
-          {cargando ? <Loader2 className="animate-spin" /> : 'COBRAR'}
-        </Button>
       </div>
     </div>
   );
