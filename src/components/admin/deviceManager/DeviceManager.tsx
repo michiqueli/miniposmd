@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { getTerminalesMP, getSucursales, vincularTerminal } from '@/app/actions/mercadopago'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/toast'
+import { Button } from '@/components/ui/Button'
+import Select from '@/components/ui/Select'
+import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 
 type MPDevice = {
   id: string
@@ -16,148 +19,190 @@ type Sucursal = {
   mpDeviceId?: string | null
 }
 
+const SIN_SUCURSAL_ASIGNADA = 'Sin sucursal asignada'
+
 export default function TerminalManager() {
   const [devices, setDevices] = useState<MPDevice[]>([])
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState('')
-
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [selectedSucursal, setSelectedSucursal] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
-    getSucursales().then(res => {
-      if (res.sucursales) setSucursales(res.sucursales as Sucursal[]);
-    });
-  }, []);
+    getSucursales().then((res) => {
+      if (res.sucursales) {
+        setSucursales(res.sucursales as Sucursal[])
+      }
+    })
+  }, [])
 
   const buscarTerminales = async () => {
-    setLoading(true);
-    setMensaje('');
-    const res = await getTerminalesMP();
-    
+    setLoading(true)
+    setMensaje('')
+
+    const res = await getTerminalesMP()
+
     if (res.error) {
-      setMensaje(`Error: ${res.error}`);
+      setMensaje(`Error: ${res.error}`)
     } else {
-      setDevices((res.devices || []) as MPDevice[]);
-      if (res.devices && res.devices.length === 0) setMensaje('No se encontraron terminales activas.');
+      setDevices((res.devices || []) as MPDevice[])
+      if (res.devices && res.devices.length === 0) {
+        setMensaje('No se encontraron terminales activas.')
+      }
     }
-    setLoading(false);
-  };
+
+    setLoading(false)
+  }
 
   const handleGuardarVinculo = async () => {
-    if (!selectedDevice || !selectedSucursal) return;
+    if (!selectedDevice || !selectedSucursal) {
+      return
+    }
 
-    const res = await vincularTerminal(selectedDevice, selectedSucursal);
-    
+    const res = await vincularTerminal(selectedDevice, selectedSucursal)
+
     if (res.success) {
       showToast('¡Vinculación guardada!', 'success')
       setSelectedDevice(null)
       setSelectedSucursal('')
       setShowConfirm(false)
-      // Recargamos sucursales para que el nombre se actualice en la lista de dispositivos
-      const updatedSuc = await getSucursales()
-      if (updatedSuc.sucursales) setSucursales(updatedSuc.sucursales as Sucursal[])
-    } else {
-      showToast('Error al guardar la vinculación.', 'error')
-      setShowConfirm(false)
-    }
-  };
 
-  // Función para obtener el nombre de la sucursal buscando por mpDeviceId
+      const updatedSuc = await getSucursales()
+      if (updatedSuc.sucursales) {
+        setSucursales(updatedSuc.sucursales as Sucursal[])
+      }
+      return
+    }
+
+    showToast('Error al guardar la vinculación.', 'error')
+    setShowConfirm(false)
+  }
+
   const getNombreSucursalAsociada = (deviceId: string) => {
-    const sucursal = sucursales.find((s) => s.mpDeviceId === deviceId);
-    return sucursal ? sucursal.nombre : 'Sin Sucursal Asignada';
-  };
+    const sucursal = sucursales.find((s) => s.mpDeviceId === deviceId)
+    return sucursal ? sucursal.nombre : SIN_SUCURSAL_ASIGNADA
+  }
+
+  const tieneSucursal = (deviceId: string) => getNombreSucursalAsociada(deviceId) !== SIN_SUCURSAL_ASIGNADA
 
   return (
-    <div className="p-6 bg-white shadow rounded-lg border border-gray-200">
-      <h2 className="text-xl font-bold mb-4 text-gray-800">Administración de Terminales MP</h2>
-      
-      <button 
-        onClick={buscarTerminales}
-        disabled={loading}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50 mb-6"
-      >
-        {loading ? 'Buscando...' : 'Actualizar Lista de Terminales'}
-      </button>
+    <Card>
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">Terminales Mercado Pago</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Gestión por tarjeta para mantener una terminal por sucursal de forma clara.
+          </p>
+        </div>
+        <Button onClick={buscarTerminales} disabled={loading}>
+          {loading ? 'Buscando...' : 'Actualizar lista'}
+        </Button>
+      </CardHeader>
 
-      {mensaje && <p className="mb-4 text-red-500 font-medium">{mensaje}</p>}
+      <CardContent>
+        {mensaje && (
+          <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+            {mensaje}
+          </p>
+        )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {devices.map((dev) => (
-          <div key={dev.id} className="border p-4 rounded-lg shadow-sm hover:shadow-md transition bg-gray-50 flex flex-col justify-between">
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                {/* Cambié el color del badge: Verde si es PDV, Azul si es Standalone */}
-                <span className={`w-3 h-3 rounded-full ${dev.operating_mode === 'PDV' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
-                <p className="font-bold text-gray-700">{dev.operating_mode}</p>
-              </div>
-              
-              {/* ACÁ LA MEJORA: Muestra el nombre de la sucursal vinculada en la DB */}
-              <p className={`text-sm font-bold ${getNombreSucursalAsociada(dev.id) !== "Sin Sucursal Asignada" ? "text-indigo-600" : "text-gray-400"}`}>
-                {getNombreSucursalAsociada(dev.id)}
-              </p>
-              
-              <p className="text-xs text-gray-400 font-mono mt-1 truncate" title={dev.id}>ID: {dev.id}</p>
-            </div>
+        {devices.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+            Todavía no hay terminales cargadas. Presioná “Actualizar lista” para buscarlas.
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {devices.map((dev) => {
+              const nombreSucursal = getNombreSucursalAsociada(dev.id)
+              const asociado = tieneSucursal(dev.id)
 
-            <div className="mt-2 pt-3 border-t border-gray-200">
-              {selectedDevice === dev.id ? (
-                <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-200">
-                  <label className="text-xs font-bold text-gray-600">Elegir Sucursal:</label>
-                  <select 
-                    className="border rounded p-1 text-sm w-full bg-white"
-                    value={selectedSucursal}
-                    onChange={(e) => setSelectedSucursal(e.target.value)}
-                  >
-                    <option value="">-- Seleccionar --</option>
-                    {sucursales.map((sucursal) => (
-                      <option key={sucursal.id} value={sucursal.id}>
-                        {sucursal.nombre} {sucursal.mpDeviceId ? '(Ya tiene terminal)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <div className="flex gap-2 mt-1">
-                    <button 
-                      onClick={() => setShowConfirm(true)}
-                      disabled={!selectedSucursal}
-                      className="bg-green-600 text-white text-xs px-3 py-1.5 rounded flex-1 hover:bg-green-700 disabled:opacity-50"
-                    >
-                      Guardar
-                    </button>
-                    <button 
-                      onClick={() => setSelectedDevice(null)}
-                      className="bg-gray-300 text-gray-700 text-xs px-3 py-1.5 rounded hover:bg-gray-400"
-                    >
-                      X
-                    </button>
+              return (
+                <div
+                  key={dev.id}
+                  className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm transition hover:shadow-md"
+                >
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full ${dev.operating_mode === 'PDV' ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                      />
+                      <p className="text-sm font-semibold text-slate-700">{dev.operating_mode}</p>
+                    </div>
+
+                    <p className={`text-sm font-semibold ${asociado ? 'text-indigo-700' : 'text-slate-400'}`}>
+                      {nombreSucursal}
+                    </p>
+
+                    <p className="mt-1 truncate font-mono text-xs text-slate-400" title={dev.id}>
+                      ID: {dev.id}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 border-t border-slate-200 pt-3">
+                    {selectedDevice === dev.id ? (
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-slate-600">Elegir sucursal</label>
+
+                        <Select
+                          value={selectedSucursal}
+                          onChange={(e) => setSelectedSucursal(e.target.value)}
+                          className="text-sm"
+                        >
+                          <option value="">-- Seleccionar --</option>
+                          {sucursales.map((sucursal) => (
+                            <option key={sucursal.id} value={sucursal.id}>
+                              {sucursal.nombre} {sucursal.mpDeviceId ? '(Ya tiene terminal)' : ''}
+                            </option>
+                          ))}
+                        </Select>
+
+                        <div className="mt-1 flex gap-2">
+                          <Button
+                            onClick={() => setShowConfirm(true)}
+                            disabled={!selectedSucursal}
+                            className="h-8 flex-1 bg-emerald-600 px-3 text-xs hover:bg-emerald-700"
+                          >
+                            Guardar
+                          </Button>
+                          <Button
+                            onClick={() => setSelectedDevice(null)}
+                            variant="ghost"
+                            className="h-8 border border-slate-300 px-3 text-xs text-slate-700 hover:bg-slate-100"
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => {
+                          setSelectedDevice(dev.id)
+                          setSelectedSucursal('')
+                        }}
+                        className="w-full"
+                      >
+                        {asociado ? 'Cambiar sucursal' : 'Vincular a sucursal'}
+                      </Button>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setSelectedDevice(dev.id)}
-                  className="w-full bg-indigo-600 text-white text-sm px-3 py-2 rounded hover:bg-indigo-700 transition"
-                >
-                  {getNombreSucursalAsociada(dev.id) !== "Sin Sucursal Asignada" ? "Cambiar Sucursal" : "Vincular a Sucursal"}
-                </button>
-              )}
-            </div>
+              )
+            })}
           </div>
-        ))}
-      </div>
+        )}
 
-      <ConfirmDialog
-        open={showConfirm}
-        title="Confirmar vinculación"
-        description={`¿Asignar la terminal ${selectedDevice ?? ''} a ${sucursales.find((sucursal) => sucursal.id === selectedSucursal)?.nombre ?? 'la sucursal seleccionada'}?`}
-        confirmLabel="Sí, vincular"
-        onClose={() => setShowConfirm(false)}
-        onConfirm={handleGuardarVinculo}
-      />
-    </div>
+        <ConfirmDialog
+          open={showConfirm}
+          title="Confirmar vinculación"
+          description={`¿Asignar la terminal ${selectedDevice ?? ''} a ${sucursales.find((sucursal) => sucursal.id === selectedSucursal)?.nombre ?? 'la sucursal seleccionada'}?`}
+          confirmLabel="Sí, vincular"
+          onClose={() => setShowConfirm(false)}
+          onConfirm={handleGuardarVinculo}
+        />
+      </CardContent>
+    </Card>
   )
 }
