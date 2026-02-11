@@ -1,17 +1,29 @@
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import AdminNav from '@/components/admin/AdminNav';
-import { actualizarRolUsuario, crearUsuario, desactivarUsuario } from './actions';
+import { crearUsuario } from './actions';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
-import Badge from '@/components/ui/Badge';
+import UsersTable from '@/components/admin/UsersTable';
+
+type UsuarioListado = {
+  id: string;
+  nombre: string;
+  rol: string;
+  sucursal: { nombre: string };
+};
+
+type SucursalListado = {
+  id: string;
+  nombre: string;
+};
 
 export default async function AdminUsuariosPage() {
   await requireRole(['ADMIN']);
 
-  const [usuarios, sucursales] = await Promise.all([
+  const [usuarios, sucursales]: [UsuarioListado[], SucursalListado[]] = await Promise.all([
     db.usuario.findMany({
       where: { deletedAt: null },
       orderBy: { nombre: 'asc' },
@@ -23,6 +35,18 @@ export default async function AdminUsuariosPage() {
       select: { id: true, nombre: true },
     }),
   ]);
+
+  const usuariosTabla = usuarios.map((usuario) => ({
+    id: usuario.id,
+    nombre: usuario.nombre,
+    rol: usuario.rol,
+    sucursalNombre: usuario.sucursal.nombre,
+  }));
+
+  const sucursalFilterOptions = [
+    { label: 'Todas las sucursales', value: 'ALL' },
+    ...sucursales.map((sucursal) => ({ label: sucursal.nombre, value: sucursal.nombre })),
+  ];
 
   return (
     <div className="p-8 min-h-screen bg-slate-50">
@@ -48,8 +72,10 @@ export default async function AdminUsuariosPage() {
               <label className="text-xs font-semibold text-slate-500">Sucursal</label>
               <Select name="sucursalId" required className="mt-1">
                 <option value="">Seleccionar...</option>
-                {sucursales.map((s: any) => (
-                  <option key={s.id} value={s.id}>{s.nombre}</option>
+                {sucursales.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -60,50 +86,14 @@ export default async function AdminUsuariosPage() {
                 <option value="ADMIN">ADMIN</option>
               </Select>
             </div>
-            <Button type="submit" className="md:col-span-4">Crear usuario</Button>
+            <Button type="submit" className="md:col-span-4">
+              Crear usuario
+            </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100 text-slate-600 uppercase text-xs">
-              <tr>
-                <th className="px-4 py-3 text-left">Nombre</th>
-                <th className="px-4 py-3 text-left">Sucursal</th>
-                <th className="px-4 py-3 text-left">Rol</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {usuarios.map((u: any) => (
-                <tr key={u.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 font-semibold text-slate-800">{u.nombre}</td>
-                  <td className="px-4 py-3 text-slate-600">{u.sucursal.nombre}</td>
-                  <td className="px-4 py-3">
-                    <form action={actualizarRolUsuario.bind(null, u.id)} className="flex items-center gap-2">
-                      <Select name="rol" defaultValue={u.rol === 'ADMIN' ? 'ADMIN' : 'CASHIER'} className="max-w-[140px]">
-                        <option value="CASHIER">CASHIER</option>
-                        <option value="ADMIN">ADMIN</option>
-                      </Select>
-                      <Button variant="secondary" className="text-xs">Guardar</Button>
-                    </form>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Badge variant={u.rol === 'ADMIN' ? 'info' : 'neutral'}>{u.rol === 'ADMIN' ? 'ADMIN' : 'CASHIER'}</Badge>
-                      <form action={desactivarUsuario.bind(null, u.id)}>
-                        <Button variant="danger" className="text-xs">Desactivar</Button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+      <UsersTable usuarios={usuariosTabla} sucursalOptions={sucursalFilterOptions} />
     </div>
   );
 }
