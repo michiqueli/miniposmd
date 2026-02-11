@@ -1,18 +1,21 @@
 'use server'
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requireRole } from '@/lib/auth';
 
-// 1. Anular Venta (Soft Delete)
 export async function anularVenta(id: string) {
+  await requireRole(['ADMIN']);
+
   await db.venta.update({
     where: { id },
-    data: { deletedAt: new Date() } // Ponemos fecha de hoy = Borrado
+    data: { deletedAt: new Date() }
   });
   revalidatePath('/admin/ventas');
 }
 
-// 2. Editar Venta (Solo datos básicos por seguridad)
 export async function actualizarVenta(id: string, nuevoMetodo: string, nuevoEstado: string) {
+  await requireRole(['ADMIN']);
+
   await db.venta.update({
     where: { id },
     data: { 

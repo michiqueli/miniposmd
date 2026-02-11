@@ -1,12 +1,19 @@
 'use server'
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requireRole } from '@/lib/auth';
 
 export async function crearProducto(formData: FormData) {
-  const nombre = formData.get('nombre') as string;
-  const precioEfectivo = parseFloat(formData.get('precioEfectivo') as string);
-  const precioDigital = parseFloat(formData.get('precioDigital') as string);
-  const categoria = formData.get('categoria') as string;
+  await requireRole(['ADMIN']);
+
+  const nombre = String(formData.get('nombre') || '').trim();
+  const precioEfectivo = Number(formData.get('precioEfectivo'));
+  const precioDigital = Number(formData.get('precioDigital'));
+  const categoria = String(formData.get('categoria') || '').trim();
+
+  if (!nombre || !Number.isFinite(precioEfectivo) || !Number.isFinite(precioDigital) || precioEfectivo <= 0 || precioDigital <= 0) {
+    throw new Error('Datos de producto inválidos');
+  }
 
   await db.producto.create({
     data: {

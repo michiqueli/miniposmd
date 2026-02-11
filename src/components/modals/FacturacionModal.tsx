@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/Dialog';
 
 interface FacturacionModalProps {
   isOpen: boolean;
@@ -14,22 +15,20 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
   const [idReceptor, setIdReceptor] = useState('');
   const [tipoFactura, setTipoFactura] = useState<'A' | 'B'>('B');
 
-  if (!isOpen) return null;
-
   const handleConfirm = () => {
     if (tipoReceptor === 'CUIL' && idReceptor.length < 11) {
-      return alert("El CUIT debe tener 11 dígitos");
+      return alert('El CUIT debe tener 11 dígitos');
     }
     onConfirm({
       tipo: tipoFactura,
-      receptorId: idReceptor || "0",
-      tipoReceptor
+      receptorId: idReceptor || '0',
+      tipoReceptor,
     });
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-4xl p-8 w-full max-w-md shadow-2xl border border-slate-100">
+    <Dialog open={isOpen} onOpenChange={(open: boolean) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="bg-blue-600 p-2 rounded-xl text-white">
             <CheckCircle2 size={24} />
@@ -43,14 +42,21 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => { setTipoReceptor('CF'); setTipoFactura('B'); }}
-              className={`p-4 rounded-2xl border-2 font-black transition-all ${tipoReceptor === 'CF' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-100 text-slate-400'}`}
+              onClick={() => {
+                setTipoReceptor('CF');
+                setTipoFactura('B');
+              }}
+              className={`p-4 rounded-2xl border-2 font-black transition-all ${
+                tipoReceptor === 'CF' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-100 text-slate-400'
+              }`}
             >
               Cons. Final
             </button>
             <button
               onClick={() => setTipoReceptor('CUIL')}
-              className={`p-4 rounded-2xl border-2 font-black transition-all ${tipoReceptor === 'CUIL' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-100 text-slate-400'}`}
+              className={`p-4 rounded-2xl border-2 font-black transition-all ${
+                tipoReceptor === 'CUIL' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-100 text-slate-400'
+              }`}
             >
               CUIT / CUIL
             </button>
@@ -74,13 +80,17 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
                 <div className="grid grid-cols-2 gap-2 mt-1">
                   <button
                     onClick={() => setTipoFactura('A')}
-                    className={`p-3 rounded-xl border-2 font-black transition-all ${tipoFactura === 'A' ? 'bg-slate-800 border-slate-800 text-white shadow-md' : 'border-slate-100 text-slate-400'}`}
+                    className={`p-3 rounded-xl border-2 font-black transition-all ${
+                      tipoFactura === 'A' ? 'bg-slate-800 border-slate-800 text-white shadow-md' : 'border-slate-100 text-slate-400'
+                    }`}
                   >
                     FACTURA A
                   </button>
                   <button
                     onClick={() => setTipoFactura('B')}
-                    className={`p-3 rounded-xl border-2 font-black transition-all ${tipoFactura === 'B' ? 'bg-slate-800 border-slate-800 text-white shadow-md' : 'border-slate-100 text-slate-400'}`}
+                    className={`p-3 rounded-xl border-2 font-black transition-all ${
+                      tipoFactura === 'B' ? 'bg-slate-800 border-slate-800 text-white shadow-md' : 'border-slate-100 text-slate-400'
+                    }`}
                   >
                     FACTURA B
                   </button>
@@ -96,16 +106,13 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
             onClick={handleConfirm}
             className="w-full bg-blue-600 hover:bg-blue-500 text-white p-5 rounded-2xl font-black text-lg shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center"
           >
-            {cargando ? "CONECTANDO CON AFIP..." : "GENERAR COMPROBANTE"}
+            {cargando ? 'CONECTANDO CON AFIP...' : 'GENERAR COMPROBANTE'}
           </button>
-          <button
-            onClick={onClose}
-            className="w-full p-4 font-bold text-slate-400 hover:text-slate-600 transition-colors"
-          >
+          <button onClick={onClose} className="w-full p-4 font-bold text-slate-400 hover:text-slate-600 transition-colors">
             Cancelar
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
