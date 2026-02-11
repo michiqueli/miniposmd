@@ -2,19 +2,34 @@
 
 import { useState, useEffect } from 'react'
 import { getTerminalesMP, getSucursales, vincularTerminal } from '@/app/actions/mercadopago'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/toast'
+
+type MPDevice = {
+  id: string
+  operating_mode: string
+}
+
+type Sucursal = {
+  id: string
+  nombre: string
+  mpDeviceId?: string | null
+}
 
 export default function TerminalManager() {
-  const [devices, setDevices] = useState<any[]>([])
-  const [sucursales, setSucursales] = useState<any[]>([])
+  const [devices, setDevices] = useState<MPDevice[]>([])
+  const [sucursales, setSucursales] = useState<Sucursal[]>([])
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState('')
 
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
-  const [selectedSucursal, setSelectedSucursal] = useState<string>("")
+  const [selectedSucursal, setSelectedSucursal] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     getSucursales().then(res => {
-      if (res.sucursales) setSucursales(res.sucursales);
+      if (res.sucursales) setSucursales(res.sucursales as Sucursal[]);
     });
   }, []);
 
@@ -26,8 +41,8 @@ export default function TerminalManager() {
     if (res.error) {
       setMensaje(`Error: ${res.error}`);
     } else {
-      setDevices(res.devices || []);
-      if (res.devices && res.devices.length === 0) setMensaje("No se encontraron terminales activas.");
+      setDevices((res.devices || []) as MPDevice[]);
+      if (res.devices && res.devices.length === 0) setMensaje('No se encontraron terminales activas.');
     }
     setLoading(false);
   };
@@ -35,30 +50,26 @@ export default function TerminalManager() {
   const handleGuardarVinculo = async () => {
     if (!selectedDevice || !selectedSucursal) return;
 
-    const sucursalId = selectedSucursal;
-    const nombreSucursal = sucursales.find(s => s.id === sucursalId)?.nombre;
-
-    const confirm = window.confirm(`¿Asignar la terminal ${selectedDevice} a ${nombreSucursal}?`);
-    if (!confirm) return;
-
-    const res = await vincularTerminal(selectedDevice, sucursalId);
+    const res = await vincularTerminal(selectedDevice, selectedSucursal);
     
     if (res.success) {
-      alert("¡Vinculación guardada!");
-      setSelectedDevice(null);
-      setSelectedSucursal("");
+      showToast('¡Vinculación guardada!', 'success')
+      setSelectedDevice(null)
+      setSelectedSucursal('')
+      setShowConfirm(false)
       // Recargamos sucursales para que el nombre se actualice en la lista de dispositivos
-      const updatedSuc = await getSucursales();
-      if (updatedSuc.sucursales) setSucursales(updatedSuc.sucursales);
+      const updatedSuc = await getSucursales()
+      if (updatedSuc.sucursales) setSucursales(updatedSuc.sucursales as Sucursal[])
     } else {
-      alert("Error al guardar.");
+      showToast('Error al guardar la vinculación.', 'error')
+      setShowConfirm(false)
     }
   };
 
   // Función para obtener el nombre de la sucursal buscando por mpDeviceId
   const getNombreSucursalAsociada = (deviceId: string) => {
-    const sucursal = sucursales.find(s => s.mpDeviceId === deviceId);
-    return sucursal ? sucursal.nombre : "Sin Sucursal Asignada";
+    const sucursal = sucursales.find((s) => s.mpDeviceId === deviceId);
+    return sucursal ? sucursal.nombre : 'Sin Sucursal Asignada';
   };
 
   return (
@@ -76,7 +87,7 @@ export default function TerminalManager() {
       {mensaje && <p className="mb-4 text-red-500 font-medium">{mensaje}</p>}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {devices.map((dev: any) => (
+        {devices.map((dev) => (
           <div key={dev.id} className="border p-4 rounded-lg shadow-sm hover:shadow-md transition bg-gray-50 flex flex-col justify-between">
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
@@ -103,16 +114,16 @@ export default function TerminalManager() {
                     onChange={(e) => setSelectedSucursal(e.target.value)}
                   >
                     <option value="">-- Seleccionar --</option>
-                    {sucursales.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.nombre} {s.mpDeviceId ? '(Ya tiene terminal)' : ''}
+                    {sucursales.map((sucursal) => (
+                      <option key={sucursal.id} value={sucursal.id}>
+                        {sucursal.nombre} {sucursal.mpDeviceId ? '(Ya tiene terminal)' : ''}
                       </option>
                     ))}
                   </select>
                   
                   <div className="flex gap-2 mt-1">
                     <button 
-                      onClick={handleGuardarVinculo}
+                      onClick={() => setShowConfirm(true)}
                       disabled={!selectedSucursal}
                       className="bg-green-600 text-white text-xs px-3 py-1.5 rounded flex-1 hover:bg-green-700 disabled:opacity-50"
                     >
@@ -138,6 +149,15 @@ export default function TerminalManager() {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={showConfirm}
+        title="Confirmar vinculación"
+        description={`¿Asignar la terminal ${selectedDevice ?? ''} a ${sucursales.find((sucursal) => sucursal.id === selectedSucursal)?.nombre ?? 'la sucursal seleccionada'}?`}
+        confirmLabel="Sí, vincular"
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleGuardarVinculo}
+      />
     </div>
   )
 }
