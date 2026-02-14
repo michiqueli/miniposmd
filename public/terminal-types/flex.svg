@@ -1,0 +1,7 @@
+<svg width="96" height="64" viewBox="0 0 96 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="24" y="4" width="48" height="56" rx="10" fill="#7C2D12"/>
+  <rect x="30" y="10" width="36" height="20" rx="4" fill="#9A3412"/>
+  <rect x="30" y="35" width="36" height="16" rx="4" fill="#C2410C"/>
+  <circle cx="48" cy="55" r="2" fill="#FFEDD5"/>
+  <text x="48" y="24" text-anchor="middle" font-size="9" font-family="Arial, sans-serif" fill="#FED7AA" font-weight="700">FLEX</text>
+</svg>

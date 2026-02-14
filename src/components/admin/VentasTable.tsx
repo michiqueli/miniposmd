@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, FileText, Filter } from 'lucide-react';
-import { anularVenta, actualizarVenta } from '../actions';
+import { anularVenta, actualizarVenta } from '@/app/admin/ventas/actions';
 import { facturarVenta } from '@/app/pos/actions';
 import FacturacionModal from '@/components/modals/FacturacionModal';
 import TableControls, { type TableOption } from '@/components/ui/TableControls';
@@ -135,11 +135,16 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
     if (!ventaAAnular) return;
 
     setAnulandoVenta(true);
-    await anularVenta(ventaAAnular);
-    setAnulandoVenta(false);
-    setVentaAAnular(null);
-    showToast('Venta anulada correctamente.', 'success');
-    router.refresh();
+    try {
+      await anularVenta(ventaAAnular);
+      showToast('Venta anulada correctamente.', 'success');
+      setVentaAAnular(null);
+      router.refresh();
+    } catch {
+      showToast('No se pudo anular la venta. Intentá nuevamente.', 'error');
+    } finally {
+      setAnulandoVenta(false);
+    }
   };
 
   const handleConfirmFactura = async (datos: { tipo: string, receptorId: string }) => {

@@ -1,9 +1,14 @@
-import DeviceManager from "@/components/deviceManager/DeviceManager"; // Ajusta la ruta si es necesario
+import DeviceManager from "@/components/admin/deviceManager/DeviceManager";
+import { requireRole } from '@/lib/auth';
+import AdminNav from '@/components/admin/AdminNav';
 
-export default function DeviceManagerPage() {
+export default async function DeviceManagerPage() {
+  await requireRole(['ADMIN']);
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Administración de Terminales</h1>
+    <div className="p-8 min-h-screen bg-slate-50">
+      <AdminNav />
+      <h1 className="text-3xl font-bold text-slate-800 mb-6">Gestión de Terminales</h1>
       <DeviceManager />
     </div>
   );

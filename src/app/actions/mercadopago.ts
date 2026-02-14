@@ -2,10 +2,12 @@
 
 // 1. IMPORTA TU DB CORRECTAMENTE (NO HAGAS NEW PRISMACLIENT)
 import { db } from "@/lib/db";
+import { requireRole } from "@/lib/auth";
 
 const MP_TOKEN = process.env.MP_ACCESS_TOKEN_PROD;
 
 export async function getTerminalesMP() {
+  await requireRole(['ADMIN']);
   if (!MP_TOKEN) return { error: "Falta el Access Token de Mercado Pago" };
 
   try {
@@ -34,6 +36,7 @@ export async function getTerminalesMP() {
 
 // --- Nueva: Obtener lista de Sucursales ---
 export async function getSucursales() {
+  await requireRole(['ADMIN']);
   try {
     const sucursales = await db.sucursal.findMany({
       orderBy: { nombre: 'asc' },
@@ -84,6 +87,7 @@ export async function configurarModoTerminal(deviceId: string, modo: 'PDV' | 'ST
 }
 
 export async function vincularTerminal(deviceId: string, sucursalId: string) {
+  await requireRole(['ADMIN']);
   try {
     // 1. Cambiamos el modo de la terminal a PDV en Mercado Pago
     // Lo hacemos primero para asegurar que la terminal sea compatible antes de guardar en DB
@@ -113,6 +117,7 @@ export async function vincularTerminal(deviceId: string, sucursalId: string) {
 }
 
 export async function consultarEstadoPagoIntent(paymentIntentId: string) {
+  await requireRole(['ADMIN', 'CASHIER']);
   try {
     // Consultamos el estado de la Intención de Pago (lo que mandamos a la maquinita)
     const res = await fetch(`https://api.mercadopago.com/point/integration-api/payment-intents/${paymentIntentId}`, {
