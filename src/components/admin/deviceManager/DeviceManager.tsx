@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { getTerminalesMP, getSucursales, vincularTerminal } from '@/app/actions/mercadopago'
+import { cambiarModoTerminal, getTerminalesMP, getSucursales, vincularTerminal } from '@/app/actions/mercadopago'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/Button'
@@ -56,6 +56,7 @@ export default function TerminalManager() {
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [selectedSucursal, setSelectedSucursal] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
+  const [loadingModeByDevice, setLoadingModeByDevice] = useState<Record<string, boolean>>({})
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -108,6 +109,26 @@ export default function TerminalManager() {
     setShowConfirm(false)
   }
 
+
+
+  const handleCambiarModo = async (deviceId: string, operatingMode: string) => {
+    setLoadingModeByDevice((prev) => ({ ...prev, [deviceId]: true }))
+
+    const res = await cambiarModoTerminal(deviceId, operatingMode)
+
+    if (res.success) {
+      setDevices((prev) =>
+        prev.map((device) =>
+          device.id === deviceId ? { ...device, operating_mode: res.operating_mode || device.operating_mode } : device,
+        ),
+      )
+      showToast('Modo de terminal actualizado.', 'success')
+    } else {
+      showToast(res.error || 'No se pudo cambiar el modo.', 'error')
+    }
+
+    setLoadingModeByDevice((prev) => ({ ...prev, [deviceId]: false }))
+  }
   const getNombreSucursalAsociada = (deviceId: string) => {
     const sucursal = sucursales.find((s) => s.mpDeviceId === deviceId)
     return sucursal ? sucursal.nombre : SIN_SUCURSAL_ASIGNADA
@@ -171,6 +192,19 @@ export default function TerminalManager() {
                     </div>
 
                     <p className="text-xs text-slate-500">{dev.name || terminalVisual.label}</p>
+
+                    <Button
+                      onClick={() => handleCambiarModo(dev.id, dev.operating_mode)}
+                      disabled={loadingModeByDevice[dev.id]}
+                      variant="ghost"
+                      className="mt-2 h-7 border border-slate-300 px-2 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      {loadingModeByDevice[dev.id]
+                        ? 'Actualizando...'
+                        : dev.operating_mode === 'PDV'
+                          ? 'Cambiar a STANDALONE'
+                          : 'Cambiar a PDV'}
+                    </Button>
 
                     <p className={`mt-2 text-sm font-semibold ${asociado ? 'text-indigo-700' : 'text-slate-400'}`}>
                       {nombreSucursal}
