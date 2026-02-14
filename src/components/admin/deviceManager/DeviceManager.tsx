@@ -1,13 +1,9 @@
 'use client'
 
-import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { getTerminalesMP, getSucursales, vincularTerminal } from '@/app/actions/mercadopago'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/toast'
-import { Button } from '@/components/ui/Button'
-import Select from '@/components/ui/Select'
-import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 
 type MPDevice = {
   id: string
@@ -21,38 +17,13 @@ type Sucursal = {
   mpDeviceId?: string | null
 }
 
-const SIN_SUCURSAL_ASIGNADA = 'Sin sucursal asignada'
-
-const TERMINAL_IMAGES = {
-  smart: '/terminal-types/smart.svg',
-  plus: '/terminal-types/plus.svg',
-  flex: '/terminal-types/flex.svg',
-  generic: '/terminal-types/generic.svg',
-} as const
-
-const getTerminalImage = (device: MPDevice) => {
-  const searchable = `${device.name ?? ''} ${device.operating_mode ?? ''}`.toLowerCase()
-
-  if (searchable.includes('smart')) {
-    return { src: TERMINAL_IMAGES.smart, label: 'Terminal Smart' }
-  }
-
-  if (searchable.includes('plus')) {
-    return { src: TERMINAL_IMAGES.plus, label: 'Terminal Plus' }
-  }
-
-  if (searchable.includes('flex')) {
-    return { src: TERMINAL_IMAGES.flex, label: 'Terminal Flex' }
-  }
-
-  return { src: TERMINAL_IMAGES.generic, label: 'Terminal genérica' }
-}
-
 export default function TerminalManager() {
   const [devices, setDevices] = useState<MPDevice[]>([])
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [statusStep, setStatusStep] = useState<string | null>(null);
+
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [selectedSucursal, setSelectedSucursal] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
@@ -69,7 +40,6 @@ export default function TerminalManager() {
   const buscarTerminales = async () => {
     setLoading(true)
     setMensaje('')
-
     const res = await getTerminalesMP()
 
     if (res.error) {
@@ -85,164 +55,133 @@ export default function TerminalManager() {
   }
 
   const handleGuardarVinculo = async () => {
-    if (!selectedDevice || !selectedSucursal) {
-      return
-    }
+    if (!selectedDevice || !selectedSucursal) return
 
-    const res = await vincularTerminal(selectedDevice, selectedSucursal)
+    const sucursalId = selectedSucursal;
+    const nombreSucursal = sucursales.find(s => s.id === sucursalId)?.nombre;
+
+    if (!window.confirm(`¿Asignar la terminal ${selectedDevice} a ${nombreSucursal}?`)) return;
+
+    setLoading(true);
+
+    // PASO 1
+    setStatusStep("1/3 - Configurando terminal en modo PDV...");
+    // Podés incluso llamar a las funciones por separado o dejar que vincularTerminal lo haga, 
+    // pero si querés feedback preciso, podrías dividir la Action. 
+    // Por ahora, usemos el mensaje antes de llamar a la acción:
+
+    const res = await vincularTerminal(selectedDevice, sucursalId);
 
     if (res.success) {
-      showToast('¡Vinculación guardada!', 'success')
-      setSelectedDevice(null)
-      setSelectedSucursal('')
-      setShowConfirm(false)
-
-      const updatedSuc = await getSucursales()
-      if (updatedSuc.sucursales) {
-        setSucursales(updatedSuc.sucursales as Sucursal[])
-      }
-      return
+      setStatusStep("3/3 - ¡Todo listo! Terminal vinculada.");
+      setTimeout(() => {
+        alert("¡Vinculación completada con éxito!");
+        setSelectedDevice(null);
+        setSelectedSucursal("");
+        setStatusStep(null);
+        buscarTerminales(); 
+      }, 500);
+    } else {
+      alert("Error: " + res.error);
+      setStatusStep(null);
     }
-
-    showToast('Error al guardar la vinculación.', 'error')
-    setShowConfirm(false)
-  }
-
-  const getNombreSucursalAsociada = (deviceId: string) => {
-    const sucursal = sucursales.find((s) => s.mpDeviceId === deviceId)
-    return sucursal ? sucursal.nombre : SIN_SUCURSAL_ASIGNADA
-  }
-
-  const tieneSucursal = (deviceId: string) => getNombreSucursalAsociada(deviceId) !== SIN_SUCURSAL_ASIGNADA
+    setLoading(false);
+  };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-800">Terminales Mercado Pago</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Gestión por tarjeta para mantener una terminal por sucursal de forma clara.
-          </p>
-        </div>
-        <Button onClick={buscarTerminales} disabled={loading}>
-          {loading ? 'Buscando...' : 'Actualizar lista'}
-        </Button>
-      </CardHeader>
+    <div className="p-6 bg-white shadow rounded-lg border border-gray-200">
+      <h2 className="text-xl font-bold mb-4 text-gray-800">Administración de Terminales MP</h2>
 
-      <CardContent>
-        {mensaje && (
-          <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
-            {mensaje}
-          </p>
-        )}
+      <button
+        onClick={buscarTerminales}
+        disabled={loading}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50 mb-6"
+      >
+        {loading ? 'Buscando...' : 'Actualizar Lista de Terminales'}
+      </button>
 
-        {devices.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-            Todavía no hay terminales cargadas. Presioná “Actualizar lista” para buscarlas.
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {devices.map((dev) => {
-              const nombreSucursal = getNombreSucursalAsociada(dev.id)
-              const asociado = tieneSucursal(dev.id)
-              const terminalVisual = getTerminalImage(dev)
+      {mensaje && <p className="mb-4 text-red-500 font-medium">{mensaje}</p>}
 
-              return (
-                <div
-                  key={dev.id}
-                  className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm transition hover:shadow-md"
-                >
-                  <div>
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`h-2.5 w-2.5 rounded-full ${dev.operating_mode === 'PDV' ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                        />
-                        <p className="text-sm font-semibold text-slate-700">{dev.operating_mode}</p>
-                      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {devices.map((dev: any) => (
+          <div key={dev.id} className="border p-4 rounded-lg shadow-sm hover:shadow-md transition bg-gray-50 flex flex-col justify-between relative overflow-hidden">
 
-                      <Image
-                        src={terminalVisual.src}
-                        alt={terminalVisual.label}
-                        width={72}
-                        height={48}
-                        className="h-12 w-[72px] rounded-md border border-slate-200 bg-white p-1"
-                      />
-                    </div>
+            {/* OVERLAY DE CARGA (Aparece solo cuando esta terminal se está procesando) */}
+            {loading && selectedDevice === dev.id && (
+              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-4 text-center">
+                <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-indigo-800 font-black text-xs uppercase tracking-widest animate-pulse">
+                  {statusStep || 'Procesando...'}
+                </p>
+              </div>
+            )}
 
-                    <p className="text-xs text-slate-500">{dev.name || terminalVisual.label}</p>
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`w-3 h-3 rounded-full ${dev.operating_mode === 'PDV' ? 'bg-green-500' : 'bg-orange-500'}`}></span>
+                <p className="font-bold text-gray-700">{dev.operating_mode}</p>
+              </div>
+              <p className="text-sm text-gray-600 font-medium">{dev.name || 'Sin Nombre'}</p>
+              <p className="text-xs text-gray-400 font-mono mt-1 truncate" title={dev.id}>ID: {dev.id}</p>
+            </div>
 
-                    <p className={`mt-2 text-sm font-semibold ${asociado ? 'text-indigo-700' : 'text-slate-400'}`}>
-                      {nombreSucursal}
-                    </p>
+            <div className="mt-2 pt-3 border-t border-gray-200">
+              {selectedDevice === dev.id ? (
+                <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-200">
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Elegir Sucursal:</label>
+                  <select
+                    disabled={loading}
+                    className="border-2 border-gray-100 rounded-xl p-2 text-sm w-full bg-white focus:border-indigo-500 outline-none transition-all"
+                    value={selectedSucursal}
+                    onChange={(e) => setSelectedSucursal(e.target.value)}
+                  >
+                    <option value="">-- Seleccionar --</option>
+                    {sucursales.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.nombre} {s.mpDeviceId ? '⚠️' : ''}
+                      </option>
+                    ))}
+                  </select>
 
-                    <p className="mt-1 truncate font-mono text-xs text-slate-400" title={dev.id}>
-                      ID: {dev.id}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 border-t border-slate-200 pt-3">
-                    {selectedDevice === dev.id ? (
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-semibold text-slate-600">Elegir sucursal</label>
-
-                        <Select
-                          value={selectedSucursal}
-                          onChange={(e) => setSelectedSucursal(e.target.value)}
-                          className="text-sm"
-                        >
-                          <option value="">-- Seleccionar --</option>
-                          {sucursales.map((sucursal) => (
-                            <option key={sucursal.id} value={sucursal.id}>
-                              {sucursal.nombre} {sucursal.mpDeviceId ? '(Ya tiene terminal)' : ''}
-                            </option>
-                          ))}
-                        </Select>
-
-                        <div className="mt-1 flex gap-2">
-                          <Button
-                            onClick={() => setShowConfirm(true)}
-                            disabled={!selectedSucursal}
-                            className="h-8 flex-1 bg-emerald-600 px-3 text-xs hover:bg-emerald-700"
-                          >
-                            Guardar
-                          </Button>
-                          <Button
-                            onClick={() => setSelectedDevice(null)}
-                            variant="ghost"
-                            className="h-8 border border-slate-300 px-3 text-xs text-slate-700 hover:bg-slate-100"
-                          >
-                            Cancelar
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={() => {
-                          setSelectedDevice(dev.id)
-                          setSelectedSucursal('')
-                        }}
-                        className="w-full"
-                      >
-                        {asociado ? 'Cambiar sucursal' : 'Vincular a sucursal'}
-                      </Button>
-                    )}
+                  <div className="flex gap-2 mt-1">
+                    <button
+                      onClick={handleGuardarVinculo}
+                      disabled={!selectedSucursal || loading}
+                      className="bg-indigo-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl flex-1 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-95"
+                    >
+                      CONFIRMAR VÍNCULO
+                    </button>
+                    <button
+                      onClick={() => { setSelectedDevice(null); setStatusStep(null); }}
+                      disabled={loading}
+                      className="bg-gray-200 text-gray-500 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-gray-300 transition-all"
+                    >
+                      X
+                    </button>
                   </div>
                 </div>
-              )
-            })}
+              ) : (
+                <button
+                  onClick={() => setSelectedDevice(dev.id)}
+                  disabled={loading}
+                  className="w-full bg-white border-2 border-indigo-600 text-indigo-600 font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-indigo-50 transition-all active:scale-95"
+                >
+                  VINCULAR A SUCURSAL
+                </button>
+              )}
+            </div>
           </div>
-        )}
+        ))}
+      </div>
 
-        <ConfirmDialog
-          open={showConfirm}
-          title="Confirmar vinculación"
-          description={`¿Asignar la terminal ${selectedDevice ?? ''} a ${sucursales.find((sucursal) => sucursal.id === selectedSucursal)?.nombre ?? 'la sucursal seleccionada'}?`}
-          confirmLabel="Sí, vincular"
-          onClose={() => setShowConfirm(false)}
-          onConfirm={handleGuardarVinculo}
-        />
-      </CardContent>
-    </Card>
+      <ConfirmDialog
+        open={showConfirm}
+        title="Confirmar vinculación"
+        description={`¿Asignar la terminal ${selectedDevice ?? ''} a ${sucursales.find((sucursal) => sucursal.id === selectedSucursal)?.nombre ?? 'la sucursal seleccionada'}?`}
+        confirmLabel="Sí, vincular"
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleGuardarVinculo}
+      />
+    </div>
   )
 }
