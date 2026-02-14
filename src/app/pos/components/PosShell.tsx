@@ -1,7 +1,8 @@
 'use client'
 import { useState, useRef } from 'react'
-import { Banknote, CheckCircle2, CreditCard, Loader2, Smartphone } from 'lucide-react'
-import { enviarCobroTerminal, consultarEstadoPagoIntent } from '@/app/actions/mercadopago'
+import { ShoppingCart, Trash2, CreditCard, Banknote, CheckCircle2, Smartphone, Loader2 } from 'lucide-react'
+// Eliminamos imports de QR viejo y traemos los nuevos
+import { enviarCobroTerminal, consultarEstadoPagoIntent, cancelarOrdenMP } from '@/app/actions/mercadopago'
 import { registrarVenta, facturarVenta } from '../actions'
 import ProductGrid from '@/components/pos/ProductGrid'
 import CartPanel from '@/components/pos/CartPanel'
@@ -121,7 +122,7 @@ export default function PosShell({
         setMensajeTerminal('¡Terminal Lista! Pase Tarjeta o escanee QR en el dispositivo.');
 
         pollingRef.current = setInterval(async () => {
-          const estado = await consultarEstadoPagoIntent(cobroRes.paymentIntentId);
+          const estado = await consultarEstadoPagoIntent(cobroRes.orderId);
 
           if (estado.finalizado) {
             if (pollingRef.current) clearInterval(pollingRef.current);
