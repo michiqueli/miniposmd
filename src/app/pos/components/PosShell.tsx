@@ -1,7 +1,8 @@
 'use client'
 import { useState, useRef } from 'react'
-import { Banknote, CheckCircle2, CreditCard, Loader2, Smartphone } from 'lucide-react'
-import { enviarCobroTerminal, consultarEstadoPagoIntent } from '@/app/actions/mercadopago'
+import { ShoppingCart, Trash2, CreditCard, Banknote, CheckCircle2, Smartphone, Loader2 } from 'lucide-react'
+// Eliminamos imports de QR viejo y traemos los nuevos
+import { enviarCobroTerminal, consultarEstadoPagoIntent, cancelarOrdenMP } from '@/app/actions/mercadopago'
 import { registrarVenta, facturarVenta } from '../actions'
 import ProductGrid from '@/components/pos/ProductGrid'
 import CartPanel from '@/components/pos/CartPanel'
@@ -121,7 +122,7 @@ export default function PosShell({
         setMensajeTerminal('¡Terminal Lista! Pase Tarjeta o escanee QR en el dispositivo.');
 
         pollingRef.current = setInterval(async () => {
-          const estado = await consultarEstadoPagoIntent(cobroRes.paymentIntentId);
+          const estado = await consultarEstadoPagoIntent(cobroRes.orderId);
 
           if (estado.finalizado) {
             if (pollingRef.current) clearInterval(pollingRef.current);
@@ -178,10 +179,14 @@ export default function PosShell({
 
         <div className="p-4 bg-slate-100 border-t border-slate-200">
           <div className="rounded-3xl bg-white border border-slate-200 shadow-md p-4">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="mt-3 text-center mb-6">
+              <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Total a pagar</span>
+              <p className="text-4xl font-black text-slate-800">${total.toFixed(2)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
               <button
                 onClick={() => setMetodoPago('EFECTIVO')}
-                className={`h-28 rounded-2xl font-black border-2 transition-all flex flex-col items-center justify-center text-xl ${metodoPago === 'EFECTIVO' ? 'border-green-500 bg-green-50 text-green-700 shadow-sm' : 'border-slate-200 text-slate-500 bg-slate-50'}`}
+                className={`h-20 rounded-2xl font-black border-2 transition-all flex flex-col items-center justify-center text-xl ${metodoPago === 'EFECTIVO' ? 'border-green-500 bg-green-50 text-green-700 shadow-sm' : 'border-slate-200 text-slate-500 bg-slate-50'}`}
               >
                 <Banknote size={28} className="mb-2" />
                 EFECTIVO
@@ -189,25 +194,22 @@ export default function PosShell({
 
               <button
                 onClick={() => setMetodoPago('TERMINAL')}
-                className={`h-28 rounded-2xl font-black border-2 transition-all flex flex-col items-center justify-center text-xl ${metodoPago === 'TERMINAL' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-500 bg-slate-50'}`}
+                className={`h-20 rounded-2xl font-black border-2 transition-all flex flex-col items-center justify-center text-xl ${metodoPago === 'TERMINAL' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' : 'border-slate-200 text-slate-500 bg-slate-50'}`}
               >
                 <CreditCard size={28} className="mb-2" />
                 TERMINAL MP
               </button>
-
+            </div>
+            <div>
               <button
                 disabled={cargando || carrito.length === 0}
                 onClick={handleFinalizarVenta}
-                className="h-28 rounded-2xl font-black bg-orange-500 hover:bg-orange-400 disabled:bg-slate-300 disabled:text-slate-500 text-white text-3xl shadow-lg transition-all active:scale-95"
+                className="h-28 w-full rounded-2xl font-black bg-orange-500 hover:bg-orange-400 disabled:bg-slate-300 disabled:text-slate-500 text-white text-3xl shadow-lg transition-all active:scale-95"
               >
                 {cargando ? 'COBRANDO...' : 'COBRAR'}
               </button>
             </div>
 
-            <div className="mt-3 text-right">
-              <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Total a pagar</span>
-              <p className="text-4xl font-black text-slate-800">${total.toFixed(2)}</p>
-            </div>
           </div>
         </div>
       </div>

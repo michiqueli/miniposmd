@@ -22,6 +22,7 @@ export default function TerminalManager() {
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState('')
+  const [statusStep, setStatusStep] = useState<string | null>(null);
 
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [selectedSucursal, setSelectedSucursal] = useState('')
@@ -56,18 +57,36 @@ export default function TerminalManager() {
   const handleGuardarVinculo = async () => {
     if (!selectedDevice || !selectedSucursal) return
 
-    const res = await vincularTerminal(selectedDevice, selectedSucursal)
+    const sucursalId = selectedSucursal;
+    const nombreSucursal = sucursales.find(s => s.id === sucursalId)?.nombre;
+
+    if (!window.confirm(`¿Asignar la terminal ${selectedDevice} a ${nombreSucursal}?`)) return;
+
+    setLoading(true);
+
+    // PASO 1
+    setStatusStep("1/3 - Configurando terminal en modo PDV...");
+    // Podés incluso llamar a las funciones por separado o dejar que vincularTerminal lo haga, 
+    // pero si querés feedback preciso, podrías dividir la Action. 
+    // Por ahora, usemos el mensaje antes de llamar a la acción:
+
+    const res = await vincularTerminal(selectedDevice, sucursalId);
 
     if (res.success) {
-      showToast('¡Vinculación guardada!', 'success')
-      setSelectedDevice(null)
-      setSelectedSucursal('')
-      setShowConfirm(false)
+      setStatusStep("3/3 - ¡Todo listo! Terminal vinculada.");
+      setTimeout(() => {
+        alert("¡Vinculación completada con éxito!");
+        setSelectedDevice(null);
+        setSelectedSucursal("");
+        setStatusStep(null);
+        buscarTerminales(); // Refrescamos la lista para ver el modo nuevo
+      }, 500);
     } else {
-      showToast('Error al guardar la vinculación.', 'error')
-      setShowConfirm(false)
+      alert("Error: " + res.error);
+      setStatusStep(null);
     }
-  }
+    setLoading(false);
+  };
 
   return (
     <div className="p-6 bg-white shadow rounded-lg border border-gray-200">
@@ -84,11 +103,22 @@ export default function TerminalManager() {
       {mensaje && <p className="mb-4 text-red-500 font-medium">{mensaje}</p>}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {devices.map((dev) => (
-          <div key={dev.id} className="border p-4 rounded-lg shadow-sm hover:shadow-md transition bg-gray-50 flex flex-col justify-between">
+        {devices.map((dev: any) => (
+          <div key={dev.id} className="border p-4 rounded-lg shadow-sm hover:shadow-md transition bg-gray-50 flex flex-col justify-between relative overflow-hidden">
+
+            {/* OVERLAY DE CARGA (Aparece solo cuando esta terminal se está procesando) */}
+            {loading && selectedDevice === dev.id && (
+              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-4 text-center">
+                <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-indigo-800 font-black text-xs uppercase tracking-widest animate-pulse">
+                  {statusStep || 'Procesando...'}
+                </p>
+              </div>
+            )}
+
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
-                <span className={`w-3 h-3 rounded-full ${dev.operating_mode === 'PDV' ? 'bg-green-500' : 'bg-blue-500'}`}></span>
+                <span className={`w-3 h-3 rounded-full ${dev.operating_mode === 'PDV' ? 'bg-green-500' : 'bg-orange-500'}`}></span>
                 <p className="font-bold text-gray-700">{dev.operating_mode}</p>
               </div>
               <p className="text-sm text-gray-600 font-medium">{dev.name || 'Sin Nombre'}</p>
@@ -98,31 +128,33 @@ export default function TerminalManager() {
             <div className="mt-2 pt-3 border-t border-gray-200">
               {selectedDevice === dev.id ? (
                 <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-200">
-                  <label className="text-xs font-bold text-gray-600">Elegir Sucursal:</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Elegir Sucursal:</label>
                   <select
-                    className="border rounded p-1 text-sm w-full bg-white"
+                    disabled={loading}
+                    className="border-2 border-gray-100 rounded-xl p-2 text-sm w-full bg-white focus:border-indigo-500 outline-none transition-all"
                     value={selectedSucursal}
                     onChange={(e) => setSelectedSucursal(e.target.value)}
                   >
                     <option value="">-- Seleccionar --</option>
-                    {sucursales.map((sucursal) => (
-                      <option key={sucursal.id} value={sucursal.id}>
-                        {sucursal.nombre} {sucursal.mpDeviceId ? '(Ya tiene terminal)' : ''}
+                    {sucursales.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.nombre} {s.mpDeviceId ? '⚠️' : ''}
                       </option>
                     ))}
                   </select>
 
                   <div className="flex gap-2 mt-1">
                     <button
-                      onClick={() => setShowConfirm(true)}
-                      disabled={!selectedSucursal}
-                      className="bg-green-600 text-white text-xs px-3 py-1.5 rounded flex-1 hover:bg-green-700 disabled:opacity-50"
+                      onClick={handleGuardarVinculo}
+                      disabled={!selectedSucursal || loading}
+                      className="bg-indigo-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl flex-1 hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-95"
                     >
-                      Guardar
+                      CONFIRMAR VÍNCULO
                     </button>
                     <button
-                      onClick={() => setSelectedDevice(null)}
-                      className="bg-gray-300 text-gray-700 text-xs px-3 py-1.5 rounded hover:bg-gray-400"
+                      onClick={() => { setSelectedDevice(null); setStatusStep(null); }}
+                      disabled={loading}
+                      className="bg-gray-200 text-gray-500 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-gray-300 transition-all"
                     >
                       X
                     </button>
@@ -131,9 +163,10 @@ export default function TerminalManager() {
               ) : (
                 <button
                   onClick={() => setSelectedDevice(dev.id)}
-                  className="w-full bg-indigo-600 text-white text-sm px-3 py-2 rounded hover:bg-indigo-700 transition"
+                  disabled={loading}
+                  className="w-full bg-white border-2 border-indigo-600 text-indigo-600 font-bold text-sm px-3 py-2.5 rounded-xl hover:bg-indigo-50 transition-all active:scale-95"
                 >
-                  Vincular a Sucursal
+                  VINCULAR A SUCURSAL
                 </button>
               )}
             </div>
