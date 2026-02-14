@@ -79,7 +79,7 @@ export default function TerminalManager() {
         setSelectedDevice(null);
         setSelectedSucursal("");
         setStatusStep(null);
-        buscarTerminales(); 
+        buscarTerminales(); // Refrescamos la lista para ver el modo nuevo
       }, 500);
     } else {
       alert("Error: " + res.error);
