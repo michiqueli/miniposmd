@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { getTerminalesMP, getSucursales, vincularTerminal } from '@/app/actions/mercadopago'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 type MPDevice = {
   id: string
   operating_mode: string
+  name?: string | null
 }
 
 type Sucursal = {
@@ -20,6 +22,31 @@ type Sucursal = {
 }
 
 const SIN_SUCURSAL_ASIGNADA = 'Sin sucursal asignada'
+
+const TERMINAL_IMAGES = {
+  smart: '/terminal-types/smart.svg',
+  plus: '/terminal-types/plus.svg',
+  flex: '/terminal-types/flex.svg',
+  generic: '/terminal-types/generic.svg',
+} as const
+
+const getTerminalImage = (device: MPDevice) => {
+  const searchable = `${device.name ?? ''} ${device.operating_mode ?? ''}`.toLowerCase()
+
+  if (searchable.includes('smart')) {
+    return { src: TERMINAL_IMAGES.smart, label: 'Terminal Smart' }
+  }
+
+  if (searchable.includes('plus')) {
+    return { src: TERMINAL_IMAGES.plus, label: 'Terminal Plus' }
+  }
+
+  if (searchable.includes('flex')) {
+    return { src: TERMINAL_IMAGES.flex, label: 'Terminal Flex' }
+  }
+
+  return { src: TERMINAL_IMAGES.generic, label: 'Terminal genérica' }
+}
 
 export default function TerminalManager() {
   const [devices, setDevices] = useState<MPDevice[]>([])
@@ -118,6 +145,7 @@ export default function TerminalManager() {
             {devices.map((dev) => {
               const nombreSucursal = getNombreSucursalAsociada(dev.id)
               const asociado = tieneSucursal(dev.id)
+              const terminalVisual = getTerminalImage(dev)
 
               return (
                 <div
@@ -125,14 +153,26 @@ export default function TerminalManager() {
                   className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm transition hover:shadow-md"
                 >
                   <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      <span
-                        className={`h-2.5 w-2.5 rounded-full ${dev.operating_mode === 'PDV' ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${dev.operating_mode === 'PDV' ? 'bg-emerald-500' : 'bg-blue-500'}`}
+                        />
+                        <p className="text-sm font-semibold text-slate-700">{dev.operating_mode}</p>
+                      </div>
+
+                      <Image
+                        src={terminalVisual.src}
+                        alt={terminalVisual.label}
+                        width={72}
+                        height={48}
+                        className="h-12 w-[72px] rounded-md border border-slate-200 bg-white p-1"
                       />
-                      <p className="text-sm font-semibold text-slate-700">{dev.operating_mode}</p>
                     </div>
 
-                    <p className={`text-sm font-semibold ${asociado ? 'text-indigo-700' : 'text-slate-400'}`}>
+                    <p className="text-xs text-slate-500">{dev.name || terminalVisual.label}</p>
+
+                    <p className={`mt-2 text-sm font-semibold ${asociado ? 'text-indigo-700' : 'text-slate-400'}`}>
                       {nombreSucursal}
                     </p>
 
