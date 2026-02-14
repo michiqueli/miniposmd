@@ -2,29 +2,30 @@
 import { useState, useRef } from 'react'
 import { ShoppingCart, Trash2, CreditCard, Banknote, CheckCircle2, Smartphone, Loader2 } from 'lucide-react'
 // Eliminamos imports de QR viejo y traemos los nuevos
-import { enviarCobroTerminal, consultarEstadoPagoIntent } from '@/app/actions/mercadopago'
+import { enviarCobroTerminal, consultarEstadoPagoIntent, cancelarOrdenMP } from '@/app/actions/mercadopago'
 import { registrarVenta, facturarVenta } from '../actions'
 
 export default function PosShell({ productos, sucursalId, usuarioId }: { productos: any[], sucursalId: string, usuarioId: string }) {
     const [carrito, setCarrito] = useState<any[]>([])
     // Solo dos métodos ahora: Efectivo o la Terminal
     const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TERMINAL'>('EFECTIVO')
-    
+
     const [showFacturacion, setShowFacturacion] = useState(false);
     const [tipoReceptor, setTipoReceptor] = useState<'CF' | 'CUIL'>('CF');
     const [idReceptor, setIdReceptor] = useState('');
     const [tipoFactura, setTipoFactura] = useState<'A' | 'B'>('B');
-    
+
     // Estados para la Terminal
     const [esperandoPago, setEsperandoPago] = useState(false);
     const [mensajeTerminal, setMensajeTerminal] = useState('');
 
     // Refs para controlar el polling y poder cancelarlo
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
+    const [orderIdActual, setOrderIdActual] = useState<string | null>(null); // Nuevo estado
 
     // Hardcodeo temporal (según tu código original)
-    sucursalId = '5fdbe000-6d63-4298-a919-eeaf7af75582'; 
-    usuarioId = 'b5ffac6f-5390-4c64-abed-3424b7945cb8'; 
+    sucursalId = '5fdbe000-6d63-4298-a919-eeaf7af75582';
+    usuarioId = 'b5ffac6f-5390-4c64-abed-3424b7945cb8';
 
     const [ventaIdActual, setVentaIdActual] = useState<string | null>(null);
     const [cargando, setCargando] = useState(false);
@@ -56,23 +57,35 @@ export default function PosShell({ productos, sucursalId, usuarioId }: { product
     }
 
     // --- FUNCIÓN DE CANCELAR OPERACIÓN EN CURSO ---
-    const cancelarOperacion = () => {
+    const cancelarOperacion = async () => {
+        // 1. Frenamos el reloj
         if (pollingRef.current) clearInterval(pollingRef.current);
+
+        // 2. Si hay una orden en MP, la cancelamos allá para liberar la terminal
+        if (orderIdActual) {
+            try {
+                await cancelarOrdenMP(orderIdActual);
+                console.log("Orden cancelada en Mercado Pago");
+            } catch (error) {
+                console.error("No se pudo cancelar en MP:", error);
+            }
+        }
+
+        // 3. Limpiamos la pantalla
         setEsperandoPago(false);
-        // Aquí podrías llamar a una action para cancelar la orden en MP si quisieras ser muy prolijo
-        alert("Operación cancelada en pantalla (la terminal puede tardar unos segundos en volver al inicio).");
-    }
+        setOrderIdActual(null);
+        setCargando(false);
+    };
 
     // --- PASO 1: FINALIZAR VENTA Y COBRAR ---
     const handleFinalizarVenta = async () => {
         if (carrito.length === 0) return alert("Carrito vacío");
         setCargando(true);
 
-        // 1. Registramos la venta en DB
         const res = await registrarVenta({
             items: carrito,
             total,
-            metodoPago, 
+            metodoPago,
             sucursalId,
             usuarioId
         });
@@ -81,53 +94,42 @@ export default function PosShell({ productos, sucursalId, usuarioId }: { product
             setVentaIdActual(res.ventaId);
 
             if (metodoPago === 'TERMINAL') {
-                // --- FLUJO TERMINAL POINT ---
                 setEsperandoPago(true);
-                setMensajeTerminal("Despertando terminal...");
+                setMensajeTerminal("Enviando orden a la terminal...");
 
-                // Convertimos a Number si tu server action espera number, o lo dejamos string si cambiaste la action.
-                // Como es un UUID, asumo que ajustaste la action para recibir string.
-                // Si la action espera number, esto fallará (avísame).
-                const cobroRes = await enviarCobroTerminal(sucursalId as any, total, res.ventaId);
+                // LLAMADA A LA NUEVA API DE ORDERS
+                const cobroRes = await enviarCobroTerminal(sucursalId, total, res.ventaId);
 
                 if (cobroRes.error) {
-                    alert("Error Comunicación: " + cobroRes.error);
+                    alert("Error: " + cobroRes.error);
                     setEsperandoPago(false);
                     setCargando(false);
                     return;
                 }
 
-                setMensajeTerminal("¡Terminal Lista! Pase Tarjeta o escanee QR en el dispositivo.");
+                // GUARDAMOS EL ID DE LA ORDEN PARA PODER CANCELARLA LUEGO
+                setOrderIdActual(cobroRes.orderId);
+                setMensajeTerminal("¡Listo! Procese el pago en la terminal.");
 
-                // Iniciamos el Polling
+                // POLLING (Seguimos preguntando a nuestra DB si el Webhook ya la aprobó)
                 pollingRef.current = setInterval(async () => {
-                    const estado = await consultarEstadoPagoIntent(cobroRes.paymentIntentId);
-                    
-                    if (estado.finalizado) {
+                    const pagado = await consultarEstadoPagoIntent(res.ventaId); // Esta función mira tu DB
+
+                    if (pagado) {
                         if (pollingRef.current) clearInterval(pollingRef.current);
-                        
-                        if (estado.aprobado) {
-                            // PAGO EXITOSO
-                            setEsperandoPago(false);
-                            alert("¡PAGO APROBADO! ✅");
-                            setShowFacturacion(true); // Pasamos a facturar
-                        } else {
-                            // PAGO RECHAZADO
-                            setEsperandoPago(false);
-                            alert("❌ El pago fue rechazado o cancelado en la terminal.");
-                            // Aquí podrías decidir si borrar la venta o dejarla pendiente
-                        }
+                        setEsperandoPago(false);
+                        setOrderIdActual(null);
+                        alert("¡PAGO RECIBIDO! ✅");
+                        setShowFacturacion(true);
+                        setCargando(false);
                     }
-                }, 3000); // Preguntar cada 3 segundos
+                }, 3000);
 
             } else {
-                // --- FLUJO EFECTIVO ---
-                const quiereFactura = confirm("Venta Efectivo registrada. ¿Facturar?");
-                if (quiereFactura) setShowFacturacion(true);
+                // Flujo efectivo
+                if (confirm("Venta registrada. ¿Facturar?")) setShowFacturacion(true);
                 else resetPOS();
             }
-        } else {
-            alert("Error al guardar venta: " + res.error);
         }
         setCargando(false);
     };
@@ -198,14 +200,14 @@ export default function PosShell({ productos, sucursalId, usuarioId }: { product
                         onClick={() => setMetodoPago('EFECTIVO')}
                         className={`flex flex-col items-center justify-center p-4 rounded-2xl font-black border-2 transition-all ${metodoPago === 'EFECTIVO' ? 'border-green-500 bg-white text-green-600 shadow-sm' : 'border-transparent text-slate-400 hover:bg-slate-100'}`}
                     >
-                        <Banknote size={24} className="mb-2"/> EFECTIVO
+                        <Banknote size={24} className="mb-2" /> EFECTIVO
                     </button>
-                    
+
                     <button
                         onClick={() => setMetodoPago('TERMINAL')}
                         className={`flex flex-col items-center justify-center p-4 rounded-2xl font-black border-2 transition-all ${metodoPago === 'TERMINAL' ? 'border-blue-500 bg-white text-blue-600 shadow-sm' : 'border-transparent text-slate-400 hover:bg-slate-100'}`}
                     >
-                        <CreditCard size={24} className="mb-2"/> TERMINAL MP
+                        <CreditCard size={24} className="mb-2" /> TERMINAL MP
                     </button>
                 </div>
 
@@ -230,19 +232,19 @@ export default function PosShell({ productos, sucursalId, usuarioId }: { product
                     <div className="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-sm w-full relative overflow-hidden">
                         {/* Decoración de fondo */}
                         <div className="absolute top-0 left-0 w-full h-2 bg-blue-500 animate-pulse"></div>
-                        
+
                         <div className="mb-6 flex justify-center">
-                           <div className="bg-blue-100 p-6 rounded-full animate-bounce">
+                            <div className="bg-blue-100 p-6 rounded-full animate-bounce">
                                 <Smartphone size={64} className="text-blue-600" />
-                           </div>
+                            </div>
                         </div>
 
                         <h2 className="text-2xl font-black text-slate-800 mb-2">Mire la Terminal</h2>
                         <p className="text-blue-600 font-bold text-lg mb-4">{mensajeTerminal}</p>
                         <p className="text-slate-400 text-sm mb-8">El cliente puede usar Tarjeta o QR en el dispositivo.</p>
-                        
+
                         <div className="flex items-center justify-center gap-2 text-slate-500 text-xs font-mono bg-slate-100 p-2 rounded mb-6">
-                            <Loader2 size={12} className="animate-spin"/> Esperando confirmación...
+                            <Loader2 size={12} className="animate-spin" /> Esperando confirmación...
                         </div>
 
                         <button

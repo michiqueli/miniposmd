@@ -46,15 +46,60 @@ export async function getSucursales() {
   }
 }
 
+/**
+ * Nueva función para cambiar el modo de la terminal vía API
+ */
+export async function configurarModoTerminal(deviceId: string, modo: 'PDV' | 'STANDALONE') {
+  if (!MP_TOKEN) return { error: "Falta el Access Token" };
+
+  try {
+    const res = await fetch(`https://api.mercadopago.com/terminals/v1/setup`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${MP_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        terminals: [
+          {
+            id: deviceId,
+            operating_mode: modo
+          }
+        ]
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Error al configurar modo terminal:", data);
+      return { error: data.message || "No se pudo cambiar el modo de la terminal" };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error(error);
+    return { error: "Error de red al configurar terminal" };
+  }
+}
+
 export async function vincularTerminal(deviceId: string, sucursalId: string) {
   try {
-    // Primero: Opcional - Desvincular esta terminal de cualquier otra sucursal para evitar duplicados
+    // 1. Cambiamos el modo de la terminal a PDV en Mercado Pago
+    // Lo hacemos primero para asegurar que la terminal sea compatible antes de guardar en DB
+    const configRes = await configurarModoTerminal(deviceId, 'STANDALONE');
+
+    if (configRes.error) {
+      return { error: `Mercado Pago no permitió configurar la terminal: ${configRes.error}` };
+    }
+
+    // 2. Desvincular esta terminal de cualquier otra sucursal previa
     await db.sucursal.updateMany({
       where: { mpDeviceId: deviceId },
       data: { mpDeviceId: null }
     });
 
-    // Asignar a la nueva sucursal
+    // 3. Asignar a la nueva sucursal
     await db.sucursal.update({
       where: { id: sucursalId },
       data: { mpDeviceId: deviceId }
@@ -110,55 +155,57 @@ export async function consultarEstadoPagoIntent(paymentIntentId: string) {
   }
 }
 
-export async function enviarCobroTerminal(sucursalId: string, monto: number, referencia: string = "VENTA-GENERICA") {
+export async function cancelarOrdenMP(orderId: string) {
   try {
-    // 1. Buscamos el ID del dispositivo en la DB usando TU import { db }
-    const sucursal = await db.sucursal.findUnique({
-      where: { id: sucursalId },
-      select: { mpDeviceId: true, nombre: true }
-    });
-
-    if (!sucursal || !sucursal.mpDeviceId) {
-      return { error: `La sucursal ${sucursal?.nombre || ''} no tiene una terminal vinculada.` };
-    }
-
-    const deviceId = sucursal.mpDeviceId;
-    console.log(`Enviando cobro de $${monto} a la terminal ${deviceId}...`);
-
-    // 2. Enviamos la orden a la API de Mercado Pago Point
-    // OJO: El monto va directo, ej: 1500.50
-    const res = await fetch(`https://api.mercadopago.com/point/integration-api/devices/${deviceId}/payment-intents`, {
+    const res = await fetch(`https://api.mercadopago.com/v1/orders/${orderId}/cancel`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN_PROD}`,
-        'Content-Type': 'application/json'
+        'X-Idempotency-Key': `c-${orderId}`
+      }
+    });
+    return { success: res.ok };
+  } catch (error) {
+    return { success: false };
+  }
+}
+
+export async function enviarCobroTerminal(sucursalId: string, monto: number, ventaId: string) {
+  try {
+    const sucursal = await db.sucursal.findUnique({
+      where: { id: sucursalId },
+      select: { mpDeviceId: true }
+    });
+
+    if (!sucursal?.mpDeviceId) return { error: "Sucursal sin terminal vinculada" };
+
+    // Formato de la nueva API de Orders
+    const res = await fetch(`https://api.mercadopago.com/v1/orders`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN_PROD}`,
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': `v-${ventaId}-${Date.now()}`
       },
       body: JSON.stringify({
-        amount: monto,
-        additional_info: {
-          external_reference: referencia, // Aquí pones el ID de tu Ticket/Mesa
-          print_on_terminal: true // Para que imprima el ticket si la terminal tiene impresora
+        type: "point",
+        external_reference: ventaId,
+        transactions: [{
+          amount: monto,
+          description: `Venta #${ventaId}`
+        }],
+        point: {
+          terminal_id: sucursal.mpDeviceId,
+          print_on_terminal: "seller_ticket"
         }
       })
     });
 
     const data = await res.json();
+    if (!res.ok) return { error: data.message || "Error MP" };
 
-    if (!res.ok) {
-      console.error("Error MP API:", data);
-      // Errores comunes: Terminal ocupada, terminal apagada, token inválido
-      return { error: data.message || "Error al comunicarse con la terminal." };
-    }
-
-    // Retornamos el ID de la intención de pago (lo necesitaremos para saber si pagó)
-    return {
-      success: true,
-      paymentIntentId: data.id,
-      status: 'waiting_for_payment' // MP devuelve estado inicial
-    };
-
-  } catch (error) {
-    console.error("Error Server Action:", error);
-    return { error: "Error interno al procesar el cobro." };
+    return { success: true, orderId: data.id };
+  } catch (e) {
+    return { error: "Error de conexión" };
   }
 }
