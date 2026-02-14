@@ -35,6 +35,45 @@ export async function getTerminalesMP() {
 }
 
 // --- Nueva: Obtener lista de Sucursales ---
+
+
+export async function cambiarModoTerminal(deviceId: string, operatingMode: string) {
+  await requireRole(['ADMIN']);
+  if (!MP_TOKEN) return { error: 'Falta el Access Token de Mercado Pago' };
+
+  try {
+    const nextMode = operatingMode === 'PDV' ? 'STANDALONE' : 'PDV';
+    const payload = { operating_mode: nextMode };
+
+    const doRequest = async (method: 'PATCH' | 'PUT') =>
+      fetch(`https://api.mercadopago.com/point/integration-api/devices/${deviceId}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${MP_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+    let res = await doRequest('PATCH');
+
+    if (res.status === 404 || res.status === 405) {
+      res = await doRequest('PUT');
+    }
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      console.error('Error cambiando modo terminal MP:', data);
+      return { error: data?.message || 'No se pudo cambiar el modo de la terminal.' };
+    }
+
+    return { success: true, operating_mode: data?.operating_mode || nextMode };
+  } catch (error) {
+    console.error(error);
+    return { error: 'Error de servidor al cambiar el modo de la terminal.' };
+  }
+}
 export async function getSucursales() {
   await requireRole(['ADMIN']);
   try {
