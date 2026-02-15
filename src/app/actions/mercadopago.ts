@@ -215,7 +215,7 @@ export async function enviarCobroTerminal(sucursalId: string, monto: number, ven
     });
 
     if (!sucursal?.mpDeviceId) return { error: "Sucursal sin terminal vinculada" };
-
+    console.log(monto, sucursal.mpDeviceId, ventaId);
     // Formato de la nueva API de Orders
     const res = await fetch(`https://api.mercadopago.com/v1/orders`, {
       method: 'POST',
@@ -226,21 +226,25 @@ export async function enviarCobroTerminal(sucursalId: string, monto: number, ven
       },
       body: JSON.stringify({
         type: "point",
-        external_reference: ventaId,
-        transactions: [{
-          amount: monto,
-          description: `Venta #${ventaId}`
-        }],
-        point: {
-          terminal_id: sucursal.mpDeviceId,
-          print_on_terminal: "seller_ticket"
+        external_reference: String(ventaId).substring(0, 64), // Límite de 64 caracteres
+        description: `Venta #${ventaId}`.substring(0, 150),
+        transactions: {
+          payments: [{
+            amount: String(monto) // La documentación pide string
+          }]
+        },
+        config: {
+          point: {
+            terminal_id: sucursal.mpDeviceId, // Debe ser MODELO__SERIAL
+            print_on_terminal: "seller_ticket" // Valor opcional pero recomendado
+          }
         }
       })
     });
 
     const data = await res.json();
+    console.log(data);
     if (!res.ok) return { error: data.message || "Error MP" };
-
     return { success: true, orderId: data.id };
   } catch (e) {
     return { error: "Error de conexión" };

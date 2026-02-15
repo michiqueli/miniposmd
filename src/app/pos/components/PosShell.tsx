@@ -84,8 +84,9 @@ export default function PosShell({
     if (pollingRef.current) clearInterval(pollingRef.current);
   }
 
-  const cancelarOperacion = () => {
+  const cancelarOperacion = async () => {
     if (pollingRef.current) clearInterval(pollingRef.current);
+    await cancelarOrdenMP(ventaIdActual || '');
     setEsperandoPago(false);
     showToast('Operación cancelada en pantalla (la terminal puede tardar unos segundos en volver al inicio).');
   }
