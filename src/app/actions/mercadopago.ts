@@ -128,13 +128,6 @@ export async function configurarModoTerminal(deviceId: string, modo: 'PDV' | 'ST
 export async function vincularTerminal(deviceId: string, sucursalId: string) {
   await requireRole(['ADMIN']);
   try {
-    // 1. Cambiamos el modo de la terminal a PDV en Mercado Pago
-    // Lo hacemos primero para asegurar que la terminal sea compatible antes de guardar en DB
-    const configRes = await configurarModoTerminal(deviceId, 'STANDALONE');
-
-    if (configRes.error) {
-      return { error: `Mercado Pago no permitió configurar la terminal: ${configRes.error}` };
-    }
 
     // 2. Desvincular esta terminal de cualquier otra sucursal previa
     await db.sucursal.updateMany({
