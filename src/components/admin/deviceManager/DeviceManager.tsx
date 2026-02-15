@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getTerminalesMP, getSucursales, vincularTerminal } from '@/app/actions/mercadopago'
-import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { cambiarModoTerminal, getTerminalesMP, getSucursales, vincularTerminal } from '@/app/actions/mercadopago'
 import { useToast } from '@/components/ui/toast'
 
 type MPDevice = {
@@ -22,11 +21,10 @@ export default function TerminalManager() {
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
   const [loading, setLoading] = useState(false)
   const [mensaje, setMensaje] = useState('')
-  const [statusStep, setStatusStep] = useState<string | null>(null);
+  const [statusStep, setStatusStep] = useState<string | null>(null)
 
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null)
   const [selectedSucursal, setSelectedSucursal] = useState('')
-  const [showConfirm, setShowConfirm] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -57,36 +55,53 @@ export default function TerminalManager() {
   const handleGuardarVinculo = async () => {
     if (!selectedDevice || !selectedSucursal) return
 
-    const sucursalId = selectedSucursal;
-    const nombreSucursal = sucursales.find(s => s.id === sucursalId)?.nombre;
+    const sucursalId = selectedSucursal
+    const nombreSucursal = sucursales.find((s) => s.id === sucursalId)?.nombre
 
-    if (!window.confirm(`¿Asignar la terminal ${selectedDevice} a ${nombreSucursal}?`)) return;
+    if (!window.confirm(`¿Asignar la terminal ${selectedDevice} a ${nombreSucursal}?`)) return
 
-    setLoading(true);
+    setLoading(true)
 
-    // PASO 1
-    setStatusStep("1/3 - Configurando terminal en modo PDV...");
-    // Podés incluso llamar a las funciones por separado o dejar que vincularTerminal lo haga, 
-    // pero si querés feedback preciso, podrías dividir la Action. 
-    // Por ahora, usemos el mensaje antes de llamar a la acción:
+    setStatusStep('1/3 - Configurando terminal en modo PDV...')
 
-    const res = await vincularTerminal(selectedDevice, sucursalId);
+    const res = await vincularTerminal(selectedDevice, sucursalId)
 
     if (res.success) {
-      setStatusStep("3/3 - ¡Todo listo! Terminal vinculada.");
+      setStatusStep('3/3 - ¡Todo listo! Terminal vinculada.')
       setTimeout(() => {
-        alert("¡Vinculación completada con éxito!");
-        setSelectedDevice(null);
-        setSelectedSucursal("");
-        setStatusStep(null);
-        buscarTerminales(); // Refrescamos la lista para ver el modo nuevo
-      }, 500);
+        showToast('¡Vinculación completada con éxito!', 'success')
+        setSelectedDevice(null)
+        setSelectedSucursal('')
+        setStatusStep(null)
+        buscarTerminales()
+      }, 500)
     } else {
-      alert("Error: " + res.error);
-      setStatusStep(null);
+      showToast(`Error: ${res.error}`, 'error')
+      setStatusStep(null)
     }
-    setLoading(false);
-  };
+    setLoading(false)
+  }
+
+  const handleCambiarModo = async (device: MPDevice) => {
+    const nuevoModo = device.operating_mode === 'PDV' ? 'STANDALONE' : 'PDV'
+    const confirmar = window.confirm(`¿Cambiar terminal ${device.id} a modo ${nuevoModo}?`)
+    if (!confirmar) return
+
+    setLoading(true)
+    setStatusStep(`Cambiando a modo ${nuevoModo}...`)
+
+    const res = await cambiarModoTerminal(device.id, device.operating_mode)
+
+    if (res.success) {
+      showToast(`Terminal ${device.id} ahora está en modo ${res.operating_mode}.`, 'success')
+      await buscarTerminales()
+    } else {
+      showToast(`Error al cambiar modo: ${res.error}`, 'error')
+    }
+
+    setStatusStep(null)
+    setLoading(false)
+  }
 
   return (
     <div className="p-6 bg-white shadow rounded-lg border border-gray-200">
@@ -103,7 +118,7 @@ export default function TerminalManager() {
       {mensaje && <p className="mb-4 text-red-500 font-medium">{mensaje}</p>}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {devices.map((dev: any) => (
+        {devices.map((dev) => (
           <div key={dev.id} className="border p-4 rounded-lg shadow-sm hover:shadow-md transition bg-gray-50 flex flex-col justify-between relative overflow-hidden">
 
             {/* OVERLAY DE CARGA (Aparece solo cuando esta terminal se está procesando) */}
@@ -126,6 +141,14 @@ export default function TerminalManager() {
             </div>
 
             <div className="mt-2 pt-3 border-t border-gray-200">
+              <button
+                onClick={() => handleCambiarModo(dev)}
+                disabled={loading}
+                className="mb-3 w-full bg-amber-500 text-white font-bold text-xs px-3 py-2.5 rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-all active:scale-95"
+              >
+                CAMBIAR A {dev.operating_mode === 'PDV' ? 'STANDALONE' : 'PDV'}
+              </button>
+
               {selectedDevice === dev.id ? (
                 <div className="flex flex-col gap-2 animate-in fade-in zoom-in duration-200">
                   <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Elegir Sucursal:</label>
@@ -174,14 +197,6 @@ export default function TerminalManager() {
         ))}
       </div>
 
-      <ConfirmDialog
-        open={showConfirm}
-        title="Confirmar vinculación"
-        description={`¿Asignar la terminal ${selectedDevice ?? ''} a ${sucursales.find((sucursal) => sucursal.id === selectedSucursal)?.nombre ?? 'la sucursal seleccionada'}?`}
-        confirmLabel="Sí, vincular"
-        onClose={() => setShowConfirm(false)}
-        onConfirm={handleGuardarVinculo}
-      />
     </div>
   )
 }
