@@ -1,252 +1,247 @@
+// src/app/actions/mercadopago.ts
+// ─────────────────────────────────────────────
+// Server Actions para integración con MercadoPago Point
+// ─────────────────────────────────────────────
 'use server'
 
-// 1. IMPORTA TU DB CORRECTAMENTE (NO HAGAS NEW PRISMACLIENT)
-import { db } from "@/lib/db";
-import { requireRole } from "@/lib/auth";
+import { db } from '@/lib/db';
+import { requireRole } from '@/lib/auth';
+import { mpFetch } from '@/lib/mercadopago';
 
-const MP_TOKEN = process.env.MP_ACCESS_TOKEN_PROD;
+// ══════════════════════════════════════════════
+// TERMINALES
+// ══════════════════════════════════════════════
 
 export async function getTerminalesMP() {
   await requireRole(['ADMIN']);
-  if (!MP_TOKEN) return { error: "Falta el Access Token de Mercado Pago" };
 
   try {
-    const res = await fetch('https://api.mercadopago.com/point/integration-api/devices', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${MP_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      cache: 'no-store'
-    });
-
+    const res = await mpFetch('/point/integration-api/devices');
     if (!res.ok) {
       const errorData = await res.json().catch(() => null);
-      console.error("Error MP:", errorData);
-      return { error: "Error de autorización o conexión con MP" };
+      console.error('Error MP:', errorData);
+      return { error: 'Error de autorización o conexión con MP' };
     }
 
     const data = await res.json();
     return { devices: Array.isArray(data.devices) ? data.devices : [] };
   } catch (error) {
     console.error(error);
-    return { error: "Error de servidor al buscar terminales" };
+    return { error: 'Error de servidor al buscar terminales' };
   }
 }
 
-// --- Nueva: Obtener lista de Sucursales ---
-
-
 export async function cambiarModoTerminal(deviceId: string, operatingMode: string) {
   await requireRole(['ADMIN']);
-  if (!MP_TOKEN) return { error: 'Falta el Access Token de Mercado Pago' };
 
   try {
     const nextMode = operatingMode === 'PDV' ? 'STANDALONE' : 'PDV';
-    const payload = { operating_mode: nextMode };
+    const body = JSON.stringify({ operating_mode: nextMode });
 
-    const doRequest = async (method: 'PATCH' | 'PUT') =>
-      fetch(`https://api.mercadopago.com/point/integration-api/devices/${deviceId}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${MP_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-    let res = await doRequest('PATCH');
+    let res = await mpFetch(`/point/integration-api/devices/${deviceId}`, {
+      method: 'PATCH',
+      body,
+    });
 
     if (res.status === 404 || res.status === 405) {
-      res = await doRequest('PUT');
+      res = await mpFetch(`/point/integration-api/devices/${deviceId}`, {
+        method: 'PUT',
+        body,
+      });
     }
 
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      console.error('Error cambiando modo terminal MP:', data);
-      return { error: data?.message || 'No se pudo cambiar el modo de la terminal.' };
+      console.error('Error cambiando modo terminal:', data);
+      return { error: data?.message || 'No se pudo cambiar el modo.' };
     }
 
     return { success: true, operating_mode: data?.operating_mode || nextMode };
   } catch (error) {
     console.error(error);
-    return { error: 'Error de servidor al cambiar el modo de la terminal.' };
+    return { error: 'Error de servidor al cambiar el modo.' };
   }
 }
+
 export async function getSucursales() {
   await requireRole(['ADMIN']);
   try {
     const sucursales = await db.sucursal.findMany({
       orderBy: { nombre: 'asc' },
-      select: { id: true, nombre: true, mpDeviceId: true } // Traemos esto para ver si ya tienen terminal
+      select: { id: true, nombre: true, mpDeviceId: true },
     });
     return { sucursales };
   } catch (error) {
     console.error(error);
-    return { error: "Error al cargar sucursales" };
-  }
-}
-
-/**
- * Nueva función para cambiar el modo de la terminal vía API
- */
-export async function configurarModoTerminal(deviceId: string, modo: 'PDV' | 'STANDALONE') {
-  if (!MP_TOKEN) return { error: "Falta el Access Token" };
-
-  try {
-    const res = await fetch(`https://api.mercadopago.com/terminals/v1/setup`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${MP_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        terminals: [
-          {
-            id: deviceId,
-            operating_mode: modo
-          }
-        ]
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error("Error al configurar modo terminal:", data);
-      return { error: data.message || "No se pudo cambiar el modo de la terminal" };
-    }
-
-    return { success: true, data };
-  } catch (error) {
-    console.error(error);
-    return { error: "Error de red al configurar terminal" };
+    return { error: 'Error al cargar sucursales' };
   }
 }
 
 export async function vincularTerminal(deviceId: string, sucursalId: string) {
   await requireRole(['ADMIN']);
   try {
-
-    // 2. Desvincular esta terminal de cualquier otra sucursal previa
+    // Desvincular de cualquier otra sucursal
     await db.sucursal.updateMany({
       where: { mpDeviceId: deviceId },
-      data: { mpDeviceId: null }
+      data: { mpDeviceId: null },
     });
 
-    // 3. Asignar a la nueva sucursal
+    // Asignar a la nueva
     await db.sucursal.update({
       where: { id: sucursalId },
-      data: { mpDeviceId: deviceId }
+      data: { mpDeviceId: deviceId },
     });
 
     return { success: true };
   } catch (error) {
-    console.error("Error Prisma:", error);
-    return { error: "No se pudo guardar la vinculación en la DB" };
+    console.error('Error Prisma:', error);
+    return { error: 'No se pudo guardar la vinculación' };
   }
 }
 
-export async function consultarEstadoPagoIntent(paymentIntentId: string) {
-  await requireRole(['ADMIN', 'CASHIER']);
-  try {
-    // Consultamos el estado de la Intención de Pago (lo que mandamos a la maquinita)
-    const res = await fetch(`https://api.mercadopago.com/point/integration-api/payment-intents/${paymentIntentId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN_PROD}`,
-        'Content-Type': 'application/json'
-      },
-      cache: 'no-store'
-    });
+// ══════════════════════════════════════════════
+// COBRO POR TERMINAL (API de Orders)
+// ══════════════════════════════════════════════
 
-    const data = await res.json();
-
-    /* Estados posibles de payment_intent (data.state):
-      - OPEN: Esperando tarjeta
-      - ON_TERMINAL: Procesando en la maquinita
-      - PROCESSED: Ya terminó (aprobado o rechazado)
-      - CANCELED: Se canceló
-      - ABANDONED: Pasó mucho tiempo
-    */
-
-    if (data.state === 'PROCESSED') {
-      // Si ya se procesó, buscamos el ID del pago real para ver si fue Aprobado o Rechazado
-      // El payment_id suele venir en data.payment.id
-      return {
-        finalizado: true,
-        aprobado: data.payment?.status === 'approved',
-        paymentId: data.payment?.id
-      };
-    } else if (data.state === 'CANCELED' || data.state === 'ABANDONED') {
-      return { finalizado: true, aprobado: false, cancelado: true };
-    }
-
-    // Si sigue OPEN o ON_TERMINAL
-    return { finalizado: false };
-
-  } catch (error) {
-    console.error("Error consultando intent:", error);
-    return { error: "Error de conexión al verificar pago" };
-  }
-}
-
-export async function cancelarOrdenMP(orderId: string) {
-  try {
-    const res = await fetch(`https://api.mercadopago.com/v1/orders/${orderId}/cancel`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN_PROD}`,
-        'X-Idempotency-Key': `c-${orderId}`
-      }
-    });
-    return { success: res.ok };
-  } catch (error) {
-    return { success: false };
-  }
-}
-
-export async function enviarCobroTerminal(sucursalId: string, monto: number, ventaId: string) {
+export async function enviarCobroTerminal(
+  sucursalId: string,
+  monto: number,
+  ventaId: string
+) {
   try {
     const sucursal = await db.sucursal.findUnique({
       where: { id: sucursalId },
-      select: { mpDeviceId: true }
+      select: { mpDeviceId: true },
     });
 
-    if (!sucursal?.mpDeviceId) return { error: "Sucursal sin terminal vinculada" };
-    console.log(monto, sucursal.mpDeviceId, ventaId);
-    // Formato de la nueva API de Orders
-    const res = await fetch(`https://api.mercadopago.com/v1/orders`, {
+    if (!sucursal?.mpDeviceId) return { error: 'Sucursal sin terminal vinculada' };
+
+    const res = await mpFetch('/v1/orders', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN_PROD}`,
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': `v-${ventaId}-${Date.now()}`
+        'X-Idempotency-Key': `v-${ventaId}-${Date.now()}`,
       },
       body: JSON.stringify({
-        type: "point",
-        external_reference: String(ventaId).substring(0, 64), // Límite de 64 caracteres
+        type: 'point',
+        external_reference: String(ventaId).substring(0, 64),
         description: `Venta #${ventaId}`.substring(0, 150),
         transactions: {
-          payments: [{
-            amount: String(monto) // La documentación pide string
-          }]
+          payments: [
+            {
+              amount: String(monto),
+            },
+          ],
         },
         config: {
           point: {
-            terminal_id: sucursal.mpDeviceId, // Debe ser MODELO__SERIAL
-            print_on_terminal: "seller_ticket" // Valor opcional pero recomendado
-          }
-        }
-      })
+            terminal_id: sucursal.mpDeviceId,
+            print_on_terminal: 'seller_ticket',
+          },
+        },
+      }),
     });
 
     const data = await res.json();
-    console.log(data);
-    if (!res.ok) return { error: data.message || "Error MP" };
+
+    if (!res.ok) {
+      console.error('Error MP enviarCobro:', data);
+      return { error: data.message || 'Error al enviar cobro a MP' };
+    }
+
+    // Guardar el orderId en la venta para tracking
+    await db.venta.update({
+      where: { id: ventaId },
+      data: { mpOrderId: data.id },
+    });
+
     return { success: true, orderId: data.id };
-  } catch (e) {
-    return { error: "Error de conexión" };
+  } catch (error) {
+    console.error('Error enviarCobroTerminal:', error);
+    return { error: 'Error de conexión' };
+  }
+}
+
+// ══════════════════════════════════════════════
+// CONSULTAR ESTADO DE ORDEN ← FIX PRINCIPAL
+// ══════════════════════════════════════════════
+// ANTES: consultarEstadoPagoIntent consultaba /payment-intents/{id}
+//        pero el ID era un orderId de /v1/orders — APIs distintas.
+// AHORA: consulta /v1/orders/{orderId} que es el endpoint correcto.
+
+export async function consultarEstadoOrden(orderId: string) {
+  await requireRole(['ADMIN', 'CASHIER']);
+
+  try {
+    const res = await mpFetch(`/v1/orders/${orderId}`);
+
+    if (!res.ok) {
+      console.error('Error consultando orden MP:', res.status);
+      return { finalizado: false };
+    }
+
+    const data = await res.json();
+
+    /*
+      Estados de Order en MP Point:
+      - "opened"     → Esperando pago en la terminal
+      - "processing" → Procesando el pago
+      - "processed"  → Se procesó (aprobado O rechazado)
+      - "closed"     → Completada exitosamente
+      - "expired"    → Expiró sin pagarse
+    */
+
+    if (data.status === 'processed' || data.status === 'closed') {
+      const payment = data.transactions?.payments?.[0];
+      const aprobado =
+        payment?.status === 'approved' ||
+        payment?.status === 'processed' ||
+        data.status_detail === 'accredited';
+
+      // Si fue aprobado, actualizar la venta en la DB
+      if (aprobado && data.external_reference) {
+        await db.venta.update({
+          where: { id: data.external_reference },
+          data: {
+            estadoPago: 'APROBADO',
+            mpPaymentId: payment?.id?.toString() || orderId,
+          },
+        });
+      }
+
+      return {
+        finalizado: true,
+        aprobado,
+        paymentId: payment?.id,
+      };
+    }
+
+    if (data.status === 'expired') {
+      return { finalizado: true, aprobado: false, cancelado: true };
+    }
+
+    // Sigue en "opened" o "processing"
+    return { finalizado: false };
+  } catch (error) {
+    console.error('Error consultando orden:', error);
+    return { error: 'Error de conexión al verificar pago' };
+  }
+}
+
+// ══════════════════════════════════════════════
+// CANCELAR ORDEN
+// ══════════════════════════════════════════════
+
+export async function cancelarOrdenMP(orderId: string) {
+  try {
+    const res = await mpFetch(`/v1/orders/${orderId}/cancel`, {
+      method: 'POST',
+      headers: {
+        'X-Idempotency-Key': `c-${orderId}`,
+      },
+    });
+    return { success: res.ok };
+  } catch {
+    return { success: false };
   }
 }

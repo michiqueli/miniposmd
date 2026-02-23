@@ -6,6 +6,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ─────────────────────────────────────────────
+// SUCURSAL
+// ─────────────────────────────────────────────
 model Sucursal {
   id         String @id @default(uuid())
   nombre     String
@@ -18,14 +21,17 @@ model Sucursal {
   stocks   StockSucursal[]
   ventas   Venta[]
   compras  Compra[]
-  
-  mpDeviceId  String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  mpDeviceId String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 }
 
+// ─────────────────────────────────────────────
+// USUARIO
+// ─────────────────────────────────────────────
 model Usuario {
   id     String @id @default(uuid())
   nombre String
@@ -36,11 +42,14 @@ model Usuario {
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
   ventas     Venta[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 }
 
+// ─────────────────────────────────────────────
+// PRODUCTO
+// ─────────────────────────────────────────────
 model Producto {
   id             String          @id @default(uuid())
   nombre         String
@@ -48,12 +57,16 @@ model Producto {
   precioDigital  Decimal         @db.Decimal(10, 2)
   categoria      String
   stocks         StockSucursal[]
+  ventaItems     VentaItem[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 }
 
+// ─────────────────────────────────────────────
+// STOCK POR SUCURSAL
+// ─────────────────────────────────────────────
 model StockSucursal {
   id       String @id @default(uuid())
   cantidad Float  @default(0)
@@ -65,54 +78,87 @@ model StockSucursal {
 
   @@unique([sucursalId, productoId])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 }
 
+// ─────────────────────────────────────────────
+// VENTA
+// ─────────────────────────────────────────────
 model Venta {
   id          String   @id @default(uuid())
   numeroVenta Int      @unique @default(autoincrement())
   fecha       DateTime @default(now())
   total       Decimal  @db.Decimal(10, 2)
-  metodoPago  String
+  metodoPago  String   // "EFECTIVO" | "MP"
 
-  estadoPago  String  @default("PENDIENTE")
-  mpPaymentId String?
-  cae         String?
-  nroFactura  Int?
-  tipoFactura String?
+  estadoPago     String  @default("PENDIENTE") // "PENDIENTE" | "APROBADO" | "ANULADO"
+  mpPaymentId    String?
+  mpOrderId      String? // ← NUEVO: guardar el orderId de MP para tracking
+  cae            String?
+  caeVencimiento String? // ← NUEVO: YYYYMMDD — vencimiento del CAE
+  nroFactura     Int?
+  tipoFactura    String? // "A" | "B" | "C"
+  docReceptor    String? // ← NUEVO: CUIT/DNI del receptor de la factura
+
+  items VentaItem[] // ← NUEVO: detalle de ítems vendidos
 
   sucursalId String
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
   usuarioId  String
   usuario    Usuario  @relation(fields: [usuarioId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
+// ─────────────────────────────────────────────
+// DETALLE DE VENTA (NUEVO)
+// ─────────────────────────────────────────────
+model VentaItem {
+  id         String  @id @default(uuid())
+  cantidad   Float
+  precioUnit Decimal @db.Decimal(10, 2)
+  subtotal   Decimal @db.Decimal(10, 2)
+
+  ventaId    String
+  venta      Venta    @relation(fields: [ventaId], references: [id])
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// COMPRA (MEJORADO para crédito fiscal)
+// ─────────────────────────────────────────────
 model Compra {
-  id            String   @id @default(uuid())
-  numeroCompra  Int      @unique @default(autoincrement())
-  fecha         DateTime @default(now())
-  descripcion   String
-  monto         Decimal  @db.Decimal(10, 2)
-  categoria     String
+  id           String   @id @default(uuid())
+  numeroCompra Int      @unique @default(autoincrement())
+  fecha        DateTime @default(now())
+  descripcion  String
+  monto        Decimal  @db.Decimal(10, 2)
+  categoria    String
+
+  // Datos fiscales del proveedor (NUEVO)
+  cuitProveedor   String?
+  nombreProveedor String?
+  tipoComprobante String? // "A" | "B" | "C" | "X" (X = sin comprobante)
+  nroComprobante  String?
+  netoGravado     Decimal? @db.Decimal(10, 2)
+  ivaDiscriminado Decimal? @db.Decimal(10, 2) // Solo FC A da crédito fiscal
+
   fotoTicketKey String?
 
   sucursalId String
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 }
 
-model Configuracion {
-  id          Int     @id @default(autoincrement())
-  sucursal    String
-  mpDeviceId  String? // <--- Aquí guardaremos el ID de la terminal
-  mpAccessToken String? // Opcional: si manejas tokens por cliente
-}
+// NOTA: Se eliminó el modelo "Configuracion" que no se usaba en ningún lado.
+// La config de terminal MP ya está en Sucursal.mpDeviceId.

@@ -1,3 +1,8 @@
+// src/components/admin/AdminNav.tsx
+// ─────────────────────────────────────────────
+// Navegación del panel de admin (ahora incluye "Contable")
+// ─────────────────────────────────────────────
+
 import Link from 'next/link';
 import { logoutAction } from '@/app/actions/auth';
 import { Button } from '@/components/ui/Button';
@@ -6,7 +11,8 @@ const links = [
   { href: '/admin/ventas', label: 'Ventas' },
   { href: '/admin/productos', label: 'Productos' },
   { href: '/admin/usuarios', label: 'Usuarios' },
-  { href: '/admin/deviceManager', label: 'Terminales' },
+  { href: '/admin/dispositivos', label: 'Terminales' },
+  { href: '/admin/contable', label: 'Contable' },  // ← NUEVO
   { href: '/pos', label: 'POS', pos: true },
 ];
 
@@ -18,8 +24,11 @@ export default function AdminNav() {
           <Link
             key={link.href}
             href={link.href}
-            className={`rounded-xl px-3 py-1.5 font-semibold transition-colors ${link.pos ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+            className={`rounded-xl px-3 py-1.5 font-semibold transition-colors ${
+              link.pos
+                ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
           >
             {link.label}
           </Link>
