@@ -1,6 +1,5 @@
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
-import AdminNav from '@/components/admin/AdminNav';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import UsersTable from '@/components/admin/UsersTable';
 import CreateUserForm from '@/components/admin/CreateUserForm';
@@ -47,7 +46,6 @@ export default async function AdminUsuariosPage() {
 
   return (
     <div className="p-8 min-h-screen bg-slate-50">
-      <AdminNav />
       <h1 className="text-3xl font-bold text-slate-800 mb-6">Gestión de Usuarios</h1>
 
       <Card className="mb-6">

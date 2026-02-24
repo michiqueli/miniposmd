@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { crearProducto } from "./actions";
 import { requireRole } from '@/lib/auth';
-import AdminNav from '@/components/admin/AdminNav';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import ProductsTable from '@/components/admin/ProductsTable';
 import Input from '@/components/ui/Input';
@@ -54,7 +53,6 @@ export default async function ProductosPage() {
 
     return (
         <div className="p-8 min-h-screen bg-slate-50">
-            <AdminNav />
             <h1 className="text-3xl font-bold text-slate-800 mb-6">Gestión de Productos</h1>
 
             <Card className="mb-6">

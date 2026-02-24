@@ -1,140 +1,179 @@
 // src/lib/afip.ts
-// ─────────────────────────────────────────────
-// Integración real con AFIP usando @afipsdk/afip.js
-//
-// REQUISITOS:
-//   npm install @afipsdk/afip.js
-//
-// VARIABLES DE ENTORNO:
-//   AFIP_CUIT=20XXXXXXXX9
-//   AFIP_CERT_PATH=certs/cert.crt
-//   AFIP_KEY_PATH=certs/key.key
-//   AFIP_PRODUCTION=true|false
-//
-// NOTA: Para testear, usá los certificados de homologación
-// que se obtienen en https://www.afip.gob.ar/ws/
-// ─────────────────────────────────────────────
+import { Arca } from "@arcasdk/core";
+import fs from "fs";
+import path from "path";
 
-import Afip from '@afipsdk/afip.js';
+let instance: Arca | null = null;
 
-let instance: InstanceType<typeof Afip> | null = null;
-
-export function getAfip(): InstanceType<typeof Afip> {
+export function getAfip(): Arca {
   if (!instance) {
-    const cuit = process.env.AFIP_CUIT;
-    if (!cuit) throw new Error('Falta AFIP_CUIT en variables de entorno');
+    const cuitStr = process.env.AFIP_CUIT;
+    if (!cuitStr) throw new Error("Falta AFIP_CUIT");
 
-    instance = new Afip({
-      CUIT: cuit,
-      cert: process.env.AFIP_CERT_PATH || 'certs/cert.crt',
-      key: process.env.AFIP_KEY_PATH || 'certs/key.key',
-      production: process.env.AFIP_PRODUCTION === 'true',
+    const cuit = Number(cuitStr.replace(/\D/g, ""));
+    if (!Number.isFinite(cuit)) throw new Error("AFIP_CUIT inválido");
+
+    const certPath = process.env.AFIP_CERT_PATH || "certs/cert.crt";
+    const keyPath = process.env.AFIP_KEY_PATH || "certs/key.key";
+
+    // Arca SDK permite pasar contenido o path. Acá usamos contenido (como vos ya lo tenías).
+    const cert = fs.readFileSync(path.resolve(certPath), "utf8");
+    const key = fs.readFileSync(path.resolve(keyPath), "utf8");
+
+    instance = new Arca({
+      cuit,
+      cert,
+      key,
+      production: true
     });
   }
   return instance;
 }
 
-// ── Tipos de Comprobante AFIP ──
-// 1  = Factura A
-// 6  = Factura B
-// 11 = Factura C (Monotributo)
-// 3  = Nota de Crédito A
-// 8  = Nota de Crédito B
-// 13 = Nota de Crédito C
-
-// ── Tipos de Documento ──
-// 80 = CUIT
-// 96 = DNI
-// 99 = Consumidor Final (sin identificar)
-
-// ── Alícuotas de IVA ──
-// 3 = 0%
-// 4 = 10.5%
-// 5 = 21%
-// 6 = 27%
-
 export type DatosFacturaAFIP = {
   puntoVenta: number;
   tipoComprobante: number;
-  concepto: number;        // 1=Productos, 2=Servicios, 3=Ambos
+  concepto: number; // 1=Productos, 2=Servicios, 3=Ambos
   docTipo: number;
   docNro: number;
   importeTotal: number;
   importeNeto: number;
   importeIVA: number;
-  alicuotaIVA: number;     // ID de alícuota (5 = 21%)
+  alicuotaIVA: number; // (5 = 21%)
 };
 
 export type ResultadoFactura = {
   cae: string;
-  caeVencimiento: string;  // YYYYMMDD
+  caeVencimiento: string; // YYYYMMDD
   nroComprobante: number;
   puntoVenta: number;
 };
 
-export async function emitirFactura(datos: DatosFacturaAFIP): Promise<ResultadoFactura> {
-  const afip = getAfip();
+type PayloadReceptor = {
+  receptorId: string;     // "0" o CUIT/CUIL
+  tipo: "A" | "B" | "C";
+  tipoReceptor: "CUIL" | "CF";
+};
 
-  // Obtener último número de comprobante emitido
-  const ultimoComp = await afip.ElectronicBilling.getLastVoucher(
-    datos.puntoVenta,
-    datos.tipoComprobante
-  );
-  const nroComprobante = ultimoComp + 1;
-
-  // Fecha en formato YYYYMMDD
-  const hoy = new Date().toISOString().split('T')[0].replace(/-/g, '');
-
-  const facturaData: Record<string, unknown> = {
-    CantReg: 1,
-    PtoVta: datos.puntoVenta,
-    CbteTipo: datos.tipoComprobante,
-    Concepto: datos.concepto,
-    DocTipo: datos.docTipo,
-    DocNro: datos.docNro,
-    CbteDesde: nroComprobante,
-    CbteHasta: nroComprobante,
-    CbteFch: hoy,
-    ImpTotal: datos.importeTotal,
-    ImpTotConc: 0,       // No gravado
-    ImpNeto: datos.importeNeto,
-    ImpOpEx: 0,           // Exento
-    ImpIVA: datos.importeIVA,
-    ImpTrib: 0,           // Otros tributos
-    MonId: 'PES',         // Pesos argentinos
-    MonCotiz: 1,
-  };
-
-  // Solo discriminar IVA en Factura A (tipo 1) y B (tipo 6) — Resp. Inscripto
-  // Factura C (tipo 11) — Monotributo: NO lleva array de IVA
-  if (datos.tipoComprobante === 1 || datos.tipoComprobante === 6) {
-    facturaData.Iva = [
-      {
-        Id: datos.alicuotaIVA,
-        BaseImp: datos.importeNeto,
-        Importe: datos.importeIVA,
-      },
-    ];
+function mapReceptorAFIP(p: PayloadReceptor): {
+  DocTipo: number;
+  DocNro: number;
+  CondicionIVAReceptorId: number;
+} {
+  // CF puro
+  if (p.tipo === "B" && p.tipoReceptor === "CF") {
+    return { DocTipo: 99, DocNro: 0, CondicionIVAReceptorId: 5 };
   }
 
-  const resultado = await afip.ElectronicBilling.createVoucher(facturaData);
+  // Factura A => RI (siempre identificado)
+  if (p.tipo === "A") {
+    return { DocTipo: 80, DocNro: Number(p.receptorId), CondicionIVAReceptorId: 1 };
+  }
 
-  return {
-    cae: resultado.CAE,
-    caeVencimiento: resultado.CAEFchVto,
-    nroComprobante,
-    puntoVenta: datos.puntoVenta,
-  };
+  // Factura B con receptor identificado (CUIL/CUIT)
+  // Default práctico: "consumidor final identificado"
+  if (p.tipo === "B" && p.tipoReceptor === "CUIL") {
+    return { DocTipo: 80, DocNro: Number(p.receptorId), CondicionIVAReceptorId: 5 };
+  }
+
+  // fallback
+  return { DocTipo: 99, DocNro: 0, CondicionIVAReceptorId: 5 };
 }
 
-/**
- * Consultar datos de un comprobante ya emitido (para reimpresión).
- */
+export async function emitirFactura(
+  datos: DatosFacturaAFIP
+): Promise<ResultadoFactura> {
+  console.log("entrando a emitirFactura");
+  const arca = getAfip();
+  console.log(datos);
+
+  try {
+    console.log("Intentando obtener último voucher...");
+    const ultimoComp = await arca.electronicBillingService.getLastVoucher(
+      datos.puntoVenta,
+      datos.tipoComprobante
+    );
+    console.log("✅ Último comprobante:", ultimoComp);
+
+    const nroComprobante = Number(ultimoComp.cbteNro) + 1;
+
+    const hoy = new Date().toISOString().split("T")[0].replace(/-/g, "");
+
+    const receptor = mapReceptorAFIP({
+      receptorId: String(datos.docNro), // o desde tu payload real
+      tipo: datos.tipoComprobante === 1 ? "A" : "B", // o mejor: pasalo directo
+      tipoReceptor: datos.docTipo === 99 ? "CF" : "CUIL",
+    });
+
+    const facturaData = {
+      CantReg: 1,
+      PtoVta: datos.puntoVenta,
+      CbteTipo: datos.tipoComprobante,
+      Concepto: datos.concepto,
+      DocTipo: receptor.DocTipo,
+      DocNro: receptor.DocNro,
+      CondicionIVAReceptorId: receptor.CondicionIVAReceptorId,
+      CbteDesde: nroComprobante,
+      CbteHasta: nroComprobante,
+      CbteFch: hoy,
+      ImpTotal: datos.importeTotal,
+      ImpTotConc: 0,
+      ImpNeto: datos.importeNeto,
+      ImpOpEx: 0,
+      ImpIVA: datos.importeIVA,
+      ImpTrib: 0,
+      MonId: "PES",
+      MonCotiz: 1,
+      ...(datos.tipoComprobante === 1 || datos.tipoComprobante === 6
+        ? {
+          Iva: [
+            {
+              Id: datos.alicuotaIVA,
+              BaseImp: datos.importeNeto,
+              Importe: datos.importeIVA,
+            },
+          ],
+        }
+        : {}),
+    };
+
+    console.log(facturaData);
+
+    const resultado = await arca.electronicBillingService.createVoucher(
+      facturaData
+    );
+
+    console.log(resultado);
+
+    return {
+      cae: resultado.cae,
+      caeVencimiento: resultado.caeFchVto,
+      nroComprobante,
+      puntoVenta: datos.puntoVenta,
+    };
+  } catch (error: any) {
+    const data = error?.response?.data ?? error?.data ?? null;
+
+    console.error("❌ Error status:", error?.response?.status ?? error?.status);
+    console.error("❌ Error message:", error?.message);
+
+    if (data) console.error("📦 Error data:", JSON.stringify(data, null, 2));
+    else console.error("📦 Error raw:", error);
+
+    throw error;
+  }
+}
+
 export async function consultarComprobante(
   puntoVenta: number,
   tipoComprobante: number,
   nroComprobante: number
 ) {
-  const afip = getAfip();
-  return afip.ElectronicBilling.getVoucherInfo(nroComprobante, puntoVenta, tipoComprobante);
+  const arca = getAfip();
+  // Firma según doc: getVoucherInfo(nro, ptoVta, cbteTipo)
+  return arca.electronicBillingService.getVoucherInfo(
+    nroComprobante,
+    puntoVenta,
+    tipoComprobante
+  );
 }

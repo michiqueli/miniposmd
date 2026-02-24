@@ -115,7 +115,7 @@ export async function facturarVenta(
     const sinIdentificar = !datos.receptorId || datos.receptorId === '0';
     const docTipo = sinIdentificar ? 99 : 80; // 99=CF, 80=CUIT
     const docNro = sinIdentificar ? 0 : parseInt(datos.receptorId, 10);
-
+console.log("Antes de llamar a emitir factura")
     // ── Emitir factura en AFIP ──
     const resultado = await emitirFactura({
       puntoVenta: venta.sucursal.puntoVenta,
@@ -128,7 +128,7 @@ export async function facturarVenta(
       importeIVA,
       alicuotaIVA: 5, // 21%
     });
-
+console.log("Resultado en facturaVenta", resultado)
     // ── Guardar en la DB ──
     await db.venta.update({
       where: { id: ventaId },
