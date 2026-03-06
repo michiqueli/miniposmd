@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/Dialog';
 import { useToast } from '@/components/ui/toast';
-import { crearCompra, actualizarCompra, CATEGORIAS_COMPRA, type CompraListItem } from '../actions';
+import { crearCompra, actualizarCompra, type CompraListItem } from '../actions';
+import { CATEGORIAS_COMPRA } from '../constants';
 import { consultarCUIT } from '@/app/pos/actions';
 import { Loader2 } from 'lucide-react';
 
