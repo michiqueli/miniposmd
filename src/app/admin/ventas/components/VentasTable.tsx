@@ -152,24 +152,38 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
     window.open(`/factura/${ventaId}?print=1`, '_blank')
   }
 
-  // ── Compartir ──
+  // ── Compartir como PDF ──
+  const [compartiendo, setCompartiendo] = useState<string | null>(null)
   const handleCompartir = async (venta: VentaRow) => {
-    const url = `${window.location.origin}/factura/${venta.id}`
-    const texto = `Factura ${venta.tipoFactura} N° ${venta.nroFactura} - $${venta.total.toFixed(2)}`
+    const fileName = `Factura_${venta.tipoFactura}_${venta.nroFactura}.pdf`
+    setCompartiendo(venta.id)
 
-    // Tablet/Mobile: usar Web Share API
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: texto, text: texto, url })
-        return
-      } catch {
-        // Si el usuario cancela, no hacer nada
+    try {
+      const { generatePdfFromUrl } = await import('@/lib/generatePdf')
+      const url = `${window.location.origin}/factura/${venta.id}`
+      const blob = await generatePdfFromUrl(url)
+      const file = new File([blob], fileName, { type: 'application/pdf' })
+
+      // Intentar Web Share API con archivo (mobile/tablet)
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: fileName, files: [file] })
+      } else {
+        // Fallback: descargar el PDF
+        const downloadUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        a.download = fileName
+        a.click()
+        URL.revokeObjectURL(downloadUrl)
+        showToast('PDF descargado.', 'success')
       }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        showToast('Error al generar el PDF.', 'error')
+      }
+    } finally {
+      setCompartiendo(null)
     }
-
-    // PC: abrir WhatsApp Web con el link
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${texto}\n${url}`)}`
-    window.open(whatsappUrl, '_blank')
   }
 
   // ── Render ──
@@ -266,14 +280,15 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
                         </button>
                       )}
 
-                      {/* Compartir (si ya tiene factura) */}
+                      {/* Compartir PDF (si ya tiene factura) */}
                       {venta.nroFactura && (
                         <button
                           onClick={() => handleCompartir(venta)}
-                          className="flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded hover:bg-green-200 text-xs font-bold"
-                          title="Compartir factura"
+                          disabled={compartiendo === venta.id}
+                          className="flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded hover:bg-green-200 text-xs font-bold disabled:opacity-50"
+                          title="Compartir factura como PDF"
                         >
-                          <Share2 size={13} /> Compartir
+                          <Share2 size={13} /> {compartiendo === venta.id ? 'Generando...' : 'PDF'}
                         </button>
                       )}
 

@@ -11,6 +11,7 @@ const links = [
   { href: '/admin/ventas', label: 'Ventas' },
   { href: '/admin/productos', label: 'Productos' },
   { href: '/admin/usuarios', label: 'Usuarios' },
+  { href: '/admin/sucursales', label: 'Sucursales' },
   { href: '/admin/dispositivos', label: 'Terminales' },
   { href: '/admin/contable', label: 'Contable' },  // ← NUEVO
   { href: '/pos', label: 'POS', pos: true },
