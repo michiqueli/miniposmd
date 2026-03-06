@@ -133,10 +133,14 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
     }
   }
 
-  const handleConfirmFactura = async (datos: { tipo: string; receptorId: string }) => {
+  const handleConfirmFactura = async (datos: { tipo: string; receptorId: string; razonSocial?: string }) => {
     if (!ventaAFacturar) return
     setCargandoFactura(true)
-    const res = await facturarVenta(ventaAFacturar, datos)
+    const res = await facturarVenta(ventaAFacturar, {
+      tipo: datos.tipo,
+      receptorId: datos.receptorId,
+      razonSocialReceptor: datos.razonSocial,
+    })
     if (res.success) {
       showToast(`Factura generada: CAE ${res.cae}`, 'success')
       setVentaAFacturar(null)

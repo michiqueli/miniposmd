@@ -182,6 +182,7 @@ export default function PosShell({
   const handleProcesarFactura = async (datos: {
     tipo: 'A' | 'B';
     receptorId: string;
+    razonSocial?: string;
   }) => {
     if (!ventaIdActual) return
 
@@ -189,6 +190,7 @@ export default function PosShell({
     const res = await facturarVenta(ventaIdActual, {
       tipo: datos.tipo,
       receptorId: datos.receptorId,
+      razonSocialReceptor: datos.razonSocial,
     })
 
     if (res.success) {

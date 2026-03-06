@@ -29,8 +29,8 @@ export async function generatePdfFromElement(element: HTMLElement): Promise<Blob
 }
 
 /**
- * Renders a URL in a hidden iframe, captures the first .factura-page element,
- * and returns a PDF Blob.
+ * Renders a URL in a hidden iframe, captures all .factura-page elements
+ * (ORIGINAL + DUPLICADO) and returns a multi-page PDF Blob.
  */
 export async function generatePdfFromUrl(url: string): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -51,12 +51,35 @@ export async function generatePdfFromUrl(url: string): Promise<Blob> {
         const doc = iframe.contentDocument;
         if (!doc) throw new Error('No se pudo acceder al contenido');
 
-        // Get only the first page (ORIGINAL)
-        const page = doc.querySelector('.factura-page') as HTMLElement;
-        if (!page) throw new Error('No se encontró la factura');
+        const pages = doc.querySelectorAll('.factura-page') as NodeListOf<HTMLElement>;
+        if (pages.length === 0) throw new Error('No se encontró la factura');
 
-        const blob = await generatePdfFromElement(page);
-        resolve(blob);
+        // Capture only ORIGINAL + DUPLICADO (first 2 pages)
+        const pagesToCapture = Array.from(pages).slice(0, 2);
+
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pdfWidth = 210;
+        const pdfHeight = 297;
+
+        for (let i = 0; i < pagesToCapture.length; i++) {
+          if (i > 0) pdf.addPage();
+
+          const canvas = await html2canvas(pagesToCapture[i], {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+          });
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          const ratio = Math.min(pdfWidth / canvas.width, pdfHeight / canvas.height);
+          const width = canvas.width * ratio;
+          const height = canvas.height * ratio;
+
+          pdf.addImage(imgData, 'JPEG', 0, 0, width, height);
+        }
+
+        resolve(pdf.output('blob'));
       } catch (err) {
         reject(err);
       } finally {
