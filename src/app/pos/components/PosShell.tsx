@@ -9,7 +9,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { CreditCard, Banknote, Smartphone, Loader2 } from 'lucide-react'
+import { CreditCard, Banknote, Smartphone, Loader2, Share2, Check } from 'lucide-react'
 import {
   enviarCobroTerminal,
   consultarEstadoOrden,     // ← FIX: antes era consultarEstadoPagoIntent
@@ -47,6 +47,9 @@ export default function PosShell({
   const [showEfectivoConfirm, setShowEfectivoConfirm] = useState(false)
   const [showFacturacion, setShowFacturacion] = useState(false)
   const [cargandoFactura, setCargandoFactura] = useState(false)
+  const [showCompartirPdf, setShowCompartirPdf] = useState(false)
+  const [compartiendo, setCompartiendo] = useState(false)
+  const [facturaInfo, setFacturaInfo] = useState<{ ventaId: string; tipo: string; nro: number } | null>(null)
   const { showToast } = useToast()
 
   // ── Carrito ──
@@ -93,6 +96,9 @@ export default function PosShell({
   const resetPOS = () => {
     setCarrito([])
     setShowFacturacion(false)
+    setShowCompartirPdf(false)
+    setCompartiendo(false)
+    setFacturaInfo(null)
     setVentaIdActual(null)
     setOrderIdActual(null)
     setCargando(false)
@@ -187,7 +193,9 @@ export default function PosShell({
 
     if (res.success) {
       showToast(`Factura generada: Nro ${res.nro} - CAE: ${res.cae}`, 'success')
-      resetPOS()
+      setShowFacturacion(false)
+      setFacturaInfo({ ventaId: ventaIdActual, tipo: datos.tipo, nro: res.nro! })
+      setShowCompartirPdf(true)
     } else {
       showToast('Error AFIP: ' + res.error, 'error')
     }
@@ -325,6 +333,68 @@ export default function PosShell({
           setShowFacturacion(true)
         }}
       />
+
+      {/* ── Overlay: Compartir PDF de factura ── */}
+      {showCompartirPdf && facturaInfo && (
+        <div className="fixed inset-0 bg-slate-900/90 z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-sm w-full">
+            <div className="mb-4 flex justify-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <Check size={36} />
+              </div>
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 mb-1">Factura generada</h2>
+            <p className="text-slate-500 text-sm mb-6">
+              FC {facturaInfo.tipo} N° {facturaInfo.nro}
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={async () => {
+                  setCompartiendo(true)
+                  try {
+                    const { generatePdfFromUrl } = await import('@/lib/generatePdf')
+                    const url = `${window.location.origin}/factura/${facturaInfo.ventaId}`
+                    const blob = await generatePdfFromUrl(url)
+                    const fileName = `Factura_${facturaInfo.tipo}_${facturaInfo.nro}.pdf`
+                    const file = new File([blob], fileName, { type: 'application/pdf' })
+
+                    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                      await navigator.share({ title: fileName, files: [file] })
+                    } else {
+                      const downloadUrl = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = downloadUrl
+                      a.download = fileName
+                      a.click()
+                      URL.revokeObjectURL(downloadUrl)
+                      showToast('PDF descargado.', 'success')
+                    }
+                  } catch (err: any) {
+                    if (err?.name !== 'AbortError') {
+                      showToast('Error al generar el PDF.', 'error')
+                    }
+                  } finally {
+                    setCompartiendo(false)
+                  }
+                }}
+                disabled={compartiendo}
+                className="w-full py-4 rounded-2xl font-black bg-green-500 hover:bg-green-400 disabled:bg-green-300 text-white text-lg shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Share2 size={22} />
+                {compartiendo ? 'Generando PDF...' : 'Compartir PDF'}
+              </button>
+
+              <button
+                onClick={resetPOS}
+                className="w-full py-3 text-slate-500 font-bold border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+              >
+                Omitir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
