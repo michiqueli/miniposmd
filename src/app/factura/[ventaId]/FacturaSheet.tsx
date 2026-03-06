@@ -84,8 +84,8 @@ export default function FacturaSheet({ factura: f, copia }: Props) {
         {/* Main header row */}
         <div style={{ display: 'flex', position: 'relative' }}>
           {/* Left side - Business info */}
-          <div style={{ flex: 1, padding: '3mm 4mm', borderRight: 'none' }}>
-            <div style={{ fontSize: '16pt', fontWeight: 'bold', marginBottom: '2mm' }}>{f.nombreComercial}</div>
+          <div style={{ flex: 1, padding: '4mm 5mm', paddingRight: '20mm' }}>
+            <div style={{ fontSize: '14pt', fontWeight: 'bold', marginBottom: '2mm' }}>{f.nombreComercial}</div>
             <div style={{ fontSize: '8pt', marginBottom: '1mm' }}>
               <strong>Razón Social:</strong> {f.razonSocial}
             </div>
@@ -93,7 +93,7 @@ export default function FacturaSheet({ factura: f, copia }: Props) {
               <strong>Domicilio Comercial:</strong> {f.direccion}
             </div>
             <div style={{ fontSize: '8pt' }}>
-              <strong>Condición frente al IVA:</strong> {condicionIVA(f.regimen)}
+              <strong>Condición frente al IVA:</strong>&nbsp;&nbsp;{condicionIVA(f.regimen)}
             </div>
           </div>
 
@@ -114,14 +114,14 @@ export default function FacturaSheet({ factura: f, copia }: Props) {
             <div style={{ fontSize: '28pt', fontWeight: 'bold', lineHeight: 1.1, paddingTop: '1mm' }}>
               {f.tipo || 'B'}
             </div>
-            <div style={{ fontSize: '7pt', borderTop: '1px solid #000', padding: '1mm 0' }}>
+            <div style={{ fontSize: '7pt', borderTop: '1px solid #000', padding: '1mm 0', textAlign: 'center' }}>
               COD. {tipoCompCodigo(f.tipo)}
             </div>
           </div>
 
           {/* Right side - Invoice info */}
-          <div style={{ flex: 1, padding: '3mm 4mm', textAlign: 'left', paddingLeft: '20mm' }}>
-            <div style={{ fontSize: '16pt', fontWeight: 'bold', marginBottom: '2mm' }}>FACTURA</div>
+          <div style={{ flex: 1, padding: '4mm 5mm', textAlign: 'left', paddingLeft: '20mm' }}>
+            <div style={{ fontSize: '14pt', fontWeight: 'bold', marginBottom: '2mm' }}>FACTURA</div>
             <div style={{ fontSize: '8pt', marginBottom: '1mm' }}>
               <strong>Punto de Venta:</strong> {pad(f.puntoVenta, 5)}&nbsp;&nbsp;&nbsp;&nbsp;
               <strong>Comp. Nro:</strong> {pad(f.numero, 8)}
