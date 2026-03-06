@@ -17,6 +17,10 @@ model Sucursal {
   regimen    String // "RI" o "MONO"
   puntoVenta Int
 
+  razonSocial         String?  // Nombre legal (ej: "MENNICHELLI NICOLAS GUSTAVO")
+  ingresosBrutos      String?  // Nro de IIBB (suele ser = CUIT)
+  inicioActividades   String?  // Fecha inicio actividades (ej: "01/03/2015")
+
   usuarios Usuario[]
   stocks   StockSucursal[]
   ventas   Venta[]

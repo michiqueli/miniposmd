@@ -76,6 +76,14 @@ export type ResumenIVA = {
   recomendacion: string;
 };
 
+// ── Item de factura (para reimpresión) ──
+export type ItemFacturaImpresion = {
+  nombre: string;
+  cantidad: number;
+  precioUnit: number;
+  subtotal: number;
+};
+
 // ── Factura (para reimpresión) ──
 export type DatosFacturaImpresion = {
   tipo: string | null;
@@ -86,12 +94,16 @@ export type DatosFacturaImpresion = {
   caeVencimiento: string | null;
   cuit: string;
   razonSocial: string;
+  nombreComercial: string;
   direccion: string;
   regimen: string;
+  ingresosBrutos: string;
+  inicioActividades: string;
   docReceptor: string | null;
   total: number;
   neto: number;
   iva: number;
   metodoPago: string;
   vendedor: string;
+  items: ItemFacturaImpresion[];
 };
