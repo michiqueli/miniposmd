@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Camera, Upload, Loader2, X, ShoppingBag } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/Dialog';
 import { useToast } from '@/components/ui/toast';
-import { crearCompra, CATEGORIAS_COMPRA } from '@/app/admin/compras/actions';
-import { procesarImagenFactura } from '@/app/admin/compras/actions';
+import { crearCompra, procesarImagenFactura } from '@/app/admin/compras/actions';
+import { CATEGORIAS_COMPRA } from '@/app/admin/compras/constants';
 import { consultarCUIT } from '@/app/pos/actions';
 
 type Props = {

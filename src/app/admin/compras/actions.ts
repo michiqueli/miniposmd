@@ -7,21 +7,6 @@ import { uploadFile, getFileUrl } from '@/lib/minio';
 import { extraerDatosFactura } from '@/lib/ocr-factura';
 
 // ══════════════════════════════════════════════
-// CATEGORÍAS FIJAS
-// ══════════════════════════════════════════════
-
-export const CATEGORIAS_COMPRA = [
-  'Mercadería',
-  'Servicios',
-  'Insumos',
-  'Alquiler',
-  'Impuestos',
-  'Sueldos',
-] as const;
-
-export type CategoriaCompra = (typeof CATEGORIAS_COMPRA)[number];
-
-// ══════════════════════════════════════════════
 // LISTAR COMPRAS
 // ══════════════════════════════════════════════
 
