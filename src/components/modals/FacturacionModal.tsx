@@ -36,8 +36,9 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
       if (res.success) {
         setRazonSocial(res.razonSocial!);
       } else {
-        setRazonSocial(null);
-        showToast(res.error || 'CUIT no encontrado', 'error');
+        res.error?.includes('no encontrado')
+        ? setRazonSocial('CUIT no encontrado')
+        : showToast(res.error || 'error');
       }
       setBuscandoCUIT(false);
     }, 400);

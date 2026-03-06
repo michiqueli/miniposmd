@@ -93,10 +93,10 @@ export async function consultarCUIT(cuit: string) {
     }
 
     const arca = getAfip();
-    const datos = await arca.registerScopeFiveService.getTaxpayerDetails(cuitNum);
-
+    const datos = await arca.registerScopeThirteenService.getTaxpayerDetails(cuitNum);
+    
     if (!datos || datos.errorConstancia) {
-      return { success: false, error: 'CUIT no encontrado en AFIP' };
+      return { success: false, error: 'El CUIT existe, pero está inactivo o bloqueado en AFIP' };
     }
 
     // datosGenerales puede contener razonSocial, nombre, apellido, tipoClave, etc.
@@ -113,8 +113,18 @@ export async function consultarCUIT(cuit: string) {
         ? `${dg.domicilioFiscal.direccion || ''}, ${dg.domicilioFiscal.localidad || ''}`
         : null,
     };
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error('Error consultando CUIT:', error);
+    
+    // Extraemos el mensaje del error de forma segura
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Si el error de AFIP dice que la clave es inexistente, devolvemos tu mensaje personalizado
+    if (errorMessage.includes('inexistente')) {
+      return { success: false, error: 'CUIT no encontrado en AFIP' };
+    }
+
+    // Si es un error distinto (caída del servidor, token vencido, etc.) devolvemos el error genérico
     return { success: false, error: 'Error de comunicación con AFIP' };
   }
 }
@@ -155,7 +165,7 @@ export async function facturarVenta(
     const sinIdentificar = !datos.receptorId || datos.receptorId === '0';
     const docTipo = sinIdentificar ? 99 : 80; // 99=CF, 80=CUIT
     const docNro = sinIdentificar ? 0 : parseInt(datos.receptorId, 10);
-console.log("Antes de llamar a emitir factura")
+
     // ── Emitir factura en AFIP ──
     const resultado = await emitirFactura({
       puntoVenta: venta.sucursal.puntoVenta,
@@ -168,7 +178,7 @@ console.log("Antes de llamar a emitir factura")
       importeIVA,
       alicuotaIVA: 5, // 21%
     });
-console.log("Resultado en facturaVenta", resultado)
+
     // ── Guardar en la DB ──
     await db.venta.update({
       where: { id: ventaId },
