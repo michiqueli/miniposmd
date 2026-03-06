@@ -11,8 +11,8 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, FileText, Filter, Printer } from 'lucide-react'
-import { anularVenta, actualizarVenta, obtenerDatosFactura } from '../actions'
+import { Trash2, FileText, Filter, Printer, Share2 } from 'lucide-react'
+import { anularVenta, actualizarVenta } from '../actions'
 import { facturarVenta } from '@/app/pos/actions'
 import FacturacionModal from '@/components/modals/FacturacionModal'
 import TableControls, { type TableOption } from '@/components/ui/TableControls'
@@ -148,41 +148,28 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
   }
 
   // ── Reimpresión ──
-  const handleReimprimir = async (ventaId: string) => {
-    const res = await obtenerDatosFactura(ventaId)
-    if ('error' in res) {
-      showToast(res.error, 'error')
-      return
-    }
-    // Por ahora, abrir en nueva ventana con los datos formateados.
-    // Podés reemplazar esto con generación de PDF o ticket térmico.
-    const f = res.factura
-    const contenido = [
-      `FACTURA ${f.tipo} - N° ${String(f.puntoVenta).padStart(5, '0')}-${String(f.numero).padStart(8, '0')}`,
-      `Fecha: ${new Date(f.fecha).toLocaleDateString('es-AR')}`,
-      `CUIT Emisor: ${f.cuit}`,
-      `Razón Social: ${f.razonSocial}`,
-      `Dirección: ${f.direccion}`,
-      `Régimen: ${f.regimen}`,
-      `─────────────────────────`,
-      `Receptor: ${f.docReceptor || 'Consumidor Final'}`,
-      `─────────────────────────`,
-      f.regimen === 'RI' ? `Neto Gravado: $${f.neto.toFixed(2)}` : '',
-      f.regimen === 'RI' ? `IVA 21%: $${f.iva.toFixed(2)}` : '',
-      `TOTAL: $${f.total.toFixed(2)}`,
-      `─────────────────────────`,
-      `CAE: ${f.cae}`,
-      `Vto. CAE: ${f.caeVencimiento || '-'}`,
-      `Método: ${f.metodoPago}`,
-      `Vendedor: ${f.vendedor}`,
-    ].filter(Boolean).join('\n')
+  const handleReimprimir = (ventaId: string) => {
+    window.open(`/factura/${ventaId}?print=1`, '_blank')
+  }
 
-    const ventana = window.open('', '_blank')
-    if (ventana) {
-      ventana.document.write(`<pre style="font-family:monospace;font-size:14px;padding:20px">${contenido}</pre>`)
-      ventana.document.title = `Factura ${f.tipo} - ${f.numero}`
-      ventana.print()
+  // ── Compartir ──
+  const handleCompartir = async (venta: VentaRow) => {
+    const url = `${window.location.origin}/factura/${venta.id}`
+    const texto = `Factura ${venta.tipoFactura} N° ${venta.nroFactura} - $${venta.total.toFixed(2)}`
+
+    // Tablet/Mobile: usar Web Share API
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: texto, text: texto, url })
+        return
+      } catch {
+        // Si el usuario cancela, no hacer nada
+      }
     }
+
+    // PC: abrir WhatsApp Web con el link
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${texto}\n${url}`)}`
+    window.open(whatsappUrl, '_blank')
   }
 
   // ── Render ──
@@ -276,6 +263,17 @@ export default function VentasTable({ ventas, sucursalOptions, usuarioOptions }:
                           title="Reimprimir factura"
                         >
                           <Printer size={13} /> Reimprimir
+                        </button>
+                      )}
+
+                      {/* Compartir (si ya tiene factura) */}
+                      {venta.nroFactura && (
+                        <button
+                          onClick={() => handleCompartir(venta)}
+                          className="flex items-center gap-1 bg-green-100 text-green-700 px-2.5 py-1 rounded hover:bg-green-200 text-xs font-bold"
+                          title="Compartir factura"
+                        >
+                          <Share2 size={13} /> Compartir
                         </button>
                       )}
 

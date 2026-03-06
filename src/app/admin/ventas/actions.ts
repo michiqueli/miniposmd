@@ -62,6 +62,9 @@ export async function obtenerDatosFactura(
     include: {
       sucursal: true,
       usuario: true,
+      items: {
+        include: { producto: true },
+      },
     },
   });
 
@@ -70,6 +73,13 @@ export async function obtenerDatosFactura(
 
   const total = Number(venta.total);
   const esRI = venta.sucursal.regimen === 'RI';
+
+  const items = venta.items.map((item: any) => ({
+    nombre: item.producto.nombre,
+    cantidad: item.cantidad,
+    precioUnit: Number(item.precioUnit),
+    subtotal: Number(item.subtotal),
+  }));
 
   return {
     success: true,
@@ -81,15 +91,19 @@ export async function obtenerDatosFactura(
       cae: venta.cae,
       caeVencimiento: venta.caeVencimiento,
       cuit: venta.sucursal.cuit,
-      razonSocial: venta.sucursal.nombre,
+      razonSocial: venta.sucursal.razonSocial || venta.sucursal.nombre,
+      nombreComercial: venta.sucursal.nombre,
       direccion: venta.sucursal.direccion,
       regimen: venta.sucursal.regimen,
+      ingresosBrutos: venta.sucursal.ingresosBrutos || venta.sucursal.cuit,
+      inicioActividades: venta.sucursal.inicioActividades || '',
       docReceptor: venta.docReceptor,
       total,
       neto: esRI ? +(total / 1.21).toFixed(2) : total,
       iva: esRI ? +(total - total / 1.21).toFixed(2) : 0,
       metodoPago: venta.metodoPago,
       vendedor: venta.usuario.nombre,
+      items,
     },
   };
 }
