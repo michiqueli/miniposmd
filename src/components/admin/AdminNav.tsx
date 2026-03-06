@@ -9,11 +9,12 @@ import { Button } from '@/components/ui/Button';
 
 const links = [
   { href: '/admin/ventas', label: 'Ventas' },
+  { href: '/admin/compras', label: 'Compras' },
   { href: '/admin/productos', label: 'Productos' },
   { href: '/admin/usuarios', label: 'Usuarios' },
   { href: '/admin/sucursales', label: 'Sucursales' },
   { href: '/admin/dispositivos', label: 'Terminales' },
-  { href: '/admin/contable', label: 'Contable' },  // ← NUEVO
+  { href: '/admin/contable', label: 'Contable' },
   { href: '/pos', label: 'POS', pos: true },
 ];
 
