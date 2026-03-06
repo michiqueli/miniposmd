@@ -45,6 +45,7 @@ model Usuario {
   sucursalId String
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
   ventas     Venta[]
+  compras    Compra[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -146,8 +147,9 @@ model Compra {
   descripcion  String
   monto        Decimal  @db.Decimal(10, 2)
   categoria    String
+  metodoPago   String?  // "EFECTIVO" | "TRANSFERENCIA" | "TARJETA"
 
-  // Datos fiscales del proveedor (NUEVO)
+  // Datos fiscales del proveedor
   cuitProveedor   String?
   nombreProveedor String?
   tipoComprobante String? // "A" | "B" | "C" | "X" (X = sin comprobante)
@@ -159,6 +161,8 @@ model Compra {
 
   sucursalId String
   sucursal   Sucursal @relation(fields: [sucursalId], references: [id])
+  usuarioId  String?
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

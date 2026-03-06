@@ -21,6 +21,7 @@ import CartPanel from '@/components/pos/CartPanel'
 import PosTopBar from '@/components/pos/PosTopBar'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FacturacionModal from '@/components/modals/FacturacionModal'
+import CompraModal from '@/components/modals/CompraModal'
 import { useToast } from '@/components/ui/toast'
 import type { ProductoPOS, ItemCarrito } from '@/lib/types'
 
@@ -50,6 +51,7 @@ export default function PosShell({
   const [showCompartirPdf, setShowCompartirPdf] = useState(false)
   const [compartiendo, setCompartiendo] = useState(false)
   const [facturaInfo, setFacturaInfo] = useState<{ ventaId: string; tipo: string; nro: number } | null>(null)
+  const [showCompraModal, setShowCompraModal] = useState(false)
   const { showToast } = useToast()
 
   // ── Carrito ──
@@ -212,6 +214,7 @@ export default function PosShell({
         usuarioNombre={usuarioNombre}
         usuarioRole={usuarioRole}
         sucursalId={sucursalId}
+        onCargarCompra={() => setShowCompraModal(true)}
       />
 
       {/* ── Grilla de productos + panel de cobro ── */}
@@ -397,6 +400,12 @@ export default function PosShell({
           </div>
         </div>
       )}
+
+      {/* ── Modal: Cargar Compra ── */}
+      <CompraModal
+        isOpen={showCompraModal}
+        onClose={() => setShowCompraModal(false)}
+      />
     </div>
   )
 }
