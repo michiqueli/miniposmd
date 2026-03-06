@@ -7,7 +7,7 @@
 import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { requireRole } from '@/lib/auth';
-import { emitirFactura } from '@/lib/afip';
+import { emitirFactura, getAfip } from '@/lib/afip';
 
 // ══════════════════════════════════════════════
 // REGISTRAR VENTA (ahora guarda ítems detallados)
@@ -80,12 +80,52 @@ export async function registrarVenta(data: {
 }
 
 // ══════════════════════════════════════════════
+// CONSULTAR CUIT EN AFIP (Padrón A5)
+// ══════════════════════════════════════════════
+
+export async function consultarCUIT(cuit: string) {
+  try {
+    await requireRole(['ADMIN', 'CASHIER']);
+
+    const cuitNum = Number(cuit.replace(/\D/g, ''));
+    if (!Number.isFinite(cuitNum) || cuit.replace(/\D/g, '').length !== 11) {
+      return { success: false, error: 'CUIT inválido' };
+    }
+
+    const arca = getAfip();
+    const datos = await arca.registerScopeFiveService.getTaxpayerDetails(cuitNum);
+
+    if (!datos || datos.errorConstancia) {
+      return { success: false, error: 'CUIT no encontrado en AFIP' };
+    }
+
+    // datosGenerales puede contener razonSocial, nombre, apellido, tipoClave, etc.
+    const dg = datos.datosGenerales || {} as any;
+    const razonSocial = dg.razonSocial
+      || [dg.apellido, dg.nombre].filter(Boolean).join(' ')
+      || 'Sin datos';
+
+    return {
+      success: true,
+      razonSocial,
+      tipoPersona: datos.tipoPersona || null,
+      domicilio: dg.domicilioFiscal
+        ? `${dg.domicilioFiscal.direccion || ''}, ${dg.domicilioFiscal.localidad || ''}`
+        : null,
+    };
+  } catch (error: unknown) {
+    console.error('Error consultando CUIT:', error);
+    return { success: false, error: 'Error de comunicación con AFIP' };
+  }
+}
+
+// ══════════════════════════════════════════════
 // FACTURAR VENTA (AFIP real, reemplaza la simulación)
 // ══════════════════════════════════════════════
 
 export async function facturarVenta(
   ventaId: string,
-  datos: { tipo: string; receptorId: string }
+  datos: { tipo: string; receptorId: string; razonSocialReceptor?: string }
 ) {
   try {
     await requireRole(['ADMIN', 'CASHIER']);
@@ -138,6 +178,7 @@ console.log("Resultado en facturaVenta", resultado)
         nroFactura: resultado.nroComprobante,
         tipoFactura: datos.tipo,
         docReceptor: sinIdentificar ? null : datos.receptorId,
+        razonSocialReceptor: sinIdentificar ? null : (datos.razonSocialReceptor || null),
       },
     });
 

@@ -156,8 +156,8 @@ export default function FacturaSheet({ factura: f, copia }: Props) {
       {/* ═══ RECEPTOR ═══ */}
       <div style={{ border: '2px solid #000', padding: '2mm 4mm', marginBottom: '2mm', fontSize: '8pt' }}>
         <div style={{ display: 'flex', gap: '10mm', marginBottom: '1mm' }}>
-          <div><strong>Doc.:</strong> {f.docReceptor ? 'CUIT' : '-'}</div>
-          <div style={{ flex: 1 }}><strong>Apellido y Nombre / Razón Social:</strong> {f.docReceptor || ''}</div>
+          <div><strong>CUIT:</strong> {f.docReceptor || '-'}</div>
+          <div style={{ flex: 1 }}><strong>Apellido y Nombre / Razón Social:</strong> {f.razonSocialReceptor || (f.docReceptor ? '' : 'Consumidor Final')}</div>
         </div>
         <div style={{ display: 'flex', gap: '10mm', marginBottom: '1mm' }}>
           <div><strong>Condición frente al IVA:</strong> {condicionIVAReceptor(f.tipo, f.docReceptor)}</div>

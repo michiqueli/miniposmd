@@ -1,13 +1,14 @@
 'use client'
-import { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/Dialog';
 import { useToast } from '@/components/ui/toast';
+import { consultarCUIT } from '@/app/pos/actions';
 
 interface FacturacionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (datos: { tipo: 'A' | 'B', receptorId: string, tipoReceptor: 'CF' | 'CUIL' }) => Promise<void>;
+  onConfirm: (datos: { tipo: 'A' | 'B', receptorId: string, tipoReceptor: 'CF' | 'CUIL', razonSocial?: string }) => Promise<void>;
   cargando: boolean;
 }
 
@@ -15,17 +16,52 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
   const [tipoReceptor, setTipoReceptor] = useState<'CF' | 'CUIL'>('CF');
   const [idReceptor, setIdReceptor] = useState('');
   const [tipoFactura, setTipoFactura] = useState<'A' | 'B'>('B');
+  const [razonSocial, setRazonSocial] = useState<string | null>(null);
+  const [buscandoCUIT, setBuscandoCUIT] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const { showToast } = useToast();
 
+  // Auto-buscar razón social cuando el CUIT tiene 11 dígitos
+  useEffect(() => {
+    const cuitLimpio = idReceptor.replace(/\D/g, '');
+    if (cuitLimpio.length !== 11) {
+      setRazonSocial(null);
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setBuscandoCUIT(true);
+      const res = await consultarCUIT(cuitLimpio);
+      if (res.success) {
+        setRazonSocial(res.razonSocial!);
+      } else {
+        setRazonSocial(null);
+        showToast(res.error || 'CUIT no encontrado', 'error');
+      }
+      setBuscandoCUIT(false);
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [idReceptor]);
+
   const handleConfirm = () => {
-    if (tipoReceptor === 'CUIL' && idReceptor.length < 11) {
+    const cuitLimpio = idReceptor.replace(/\D/g, '');
+    if (tipoReceptor === 'CUIL' && cuitLimpio.length < 11) {
       showToast('El CUIT debe tener 11 dígitos', 'error');
+      return;
+    }
+    if (tipoReceptor === 'CUIL' && !razonSocial) {
+      showToast('Esperá a que se valide el CUIT en AFIP', 'error');
       return;
     }
     onConfirm({
       tipo: tipoFactura,
-      receptorId: idReceptor || '0',
+      receptorId: cuitLimpio || '0',
       tipoReceptor,
+      razonSocial: razonSocial || undefined,
     });
   };
 
@@ -76,6 +112,19 @@ export default function FacturacionModal({ isOpen, onClose, onConfirm, cargando 
                   className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl mt-1 text-xl font-mono focus:border-blue-500 outline-none transition-all"
                   placeholder="20XXXXXXXX9"
                 />
+                {/* Resultado de búsqueda AFIP */}
+                {buscandoCUIT && (
+                  <div className="flex items-center gap-2 mt-2 px-2 text-sm text-blue-500">
+                    <Loader2 size={14} className="animate-spin" />
+                    Buscando en AFIP...
+                  </div>
+                )}
+                {razonSocial && !buscandoCUIT && (
+                  <div className="mt-2 p-3 bg-emerald-50 border-2 border-emerald-200 rounded-xl">
+                    <span className="text-[10px] font-black text-emerald-600 uppercase">Razón Social</span>
+                    <p className="text-base font-bold text-emerald-800">{razonSocial}</p>
+                  </div>
+                )}
               </div>
 
               <div>

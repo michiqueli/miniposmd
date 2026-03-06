@@ -104,7 +104,8 @@ model Venta {
   caeVencimiento String? // ← NUEVO: YYYYMMDD — vencimiento del CAE
   nroFactura     Int?
   tipoFactura    String? // "A" | "B" | "C"
-  docReceptor    String? // ← NUEVO: CUIT/DNI del receptor de la factura
+  docReceptor           String? // ← CUIT/DNI del receptor de la factura
+  razonSocialReceptor   String? // ← Razón social / nombre del receptor
 
   items VentaItem[] // ← NUEVO: detalle de ítems vendidos
 

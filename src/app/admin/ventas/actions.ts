@@ -98,6 +98,7 @@ export async function obtenerDatosFactura(
       ingresosBrutos: venta.sucursal.ingresosBrutos || venta.sucursal.cuit,
       inicioActividades: venta.sucursal.inicioActividades || '',
       docReceptor: venta.docReceptor,
+      razonSocialReceptor: venta.razonSocialReceptor || null,
       total,
       neto: esRI ? +(total / 1.21).toFixed(2) : total,
       iva: esRI ? +(total - total / 1.21).toFixed(2) : 0,

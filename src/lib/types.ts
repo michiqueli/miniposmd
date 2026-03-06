@@ -100,6 +100,7 @@ export type DatosFacturaImpresion = {
   ingresosBrutos: string;
   inicioActividades: string;
   docReceptor: string | null;
+  razonSocialReceptor: string | null;
   total: number;
   neto: number;
   iva: number;
