@@ -28,7 +28,7 @@ export async function extraerDatosFactura(
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const prompt = `Analizá esta imagen de una factura o ticket de compra argentino.
 Extraé los siguientes datos y devolvelos SOLO como JSON válido, sin markdown ni texto adicional:
@@ -62,7 +62,7 @@ Reglas:
       },
     },
   ]);
-
+  
   const text = result.response.text().trim();
 
   // Limpiar posible markdown wrapping
