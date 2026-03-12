@@ -60,6 +60,9 @@ function calcularRango(
 // MERCADO PAGO: Fetch pagos con paginación
 // ══════════════════════════════════════════════
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MPPaymentRaw = Record<string, any>
+
 type MPPayment = {
   id: number
   transaction_amount: number
@@ -68,12 +71,9 @@ type MPPayment = {
   payment_method_id: string
   status: string
   date_approved: string | null
-  amounts: {
-    collector: {
-      net_received: number
-      transaction: number
-    }
-  }
+  collector_id: number | null
+  payer_id: number | null
+  net_received: number
   charges_details: {
     name: string
     type: string
@@ -87,6 +87,56 @@ type MPPayment = {
     tags?: string[]
   }
 }
+
+/**
+ * Normaliza un pago de la API de MP.
+ * La API tiene distintos formatos según la antigüedad y tipo de pago:
+ * - Pagos nuevos: amounts.collector.net_received
+ * - Pagos viejos: transaction_details.net_received_amount
+ * - charges_details puede no tener rate ni amounts en pagos viejos
+ */
+function normalizarPago(raw: MPPaymentRaw): MPPayment {
+  const bruto = raw.transaction_amount ?? 0
+
+  // net_received: probar amounts.collector primero, luego transaction_details
+  const netFromAmounts = raw.amounts?.collector?.net_received
+  const netFromDetails = raw.transaction_details?.net_received_amount
+  const netReceived = typeof netFromAmounts === 'number'
+    ? netFromAmounts
+    : typeof netFromDetails === 'number'
+      ? netFromDetails
+      : bruto // si no hay dato, asumir bruto
+
+  // Normalizar charges_details
+  const chargesRaw = Array.isArray(raw.charges_details) ? raw.charges_details : []
+  const charges = chargesRaw.map((c: MPPaymentRaw) => ({
+    name: c.name ?? '',
+    type: c.type ?? '',
+    amounts: {
+      original: c.amounts?.original ?? 0,
+      refunded: c.amounts?.refunded ?? 0,
+    },
+    rate: typeof c.rate === 'number' ? c.rate : 0,
+  }))
+
+  return {
+    id: raw.id,
+    transaction_amount: bruto,
+    operation_type: raw.operation_type ?? '',
+    payment_type_id: raw.payment_type_id ?? '',
+    payment_method_id: raw.payment_method_id ?? '',
+    status: raw.status ?? '',
+    date_approved: raw.date_approved ?? null,
+    collector_id: raw.collector_id ?? null,
+    payer_id: raw.payer_id ?? null,
+    net_received: netReceived,
+    charges_details: charges,
+    point_of_interaction: raw.point_of_interaction,
+    card: raw.card,
+  }
+}
+
+const COLLECTOR_ID = 80710247
 
 async function fetchAllMPPayments(desde: Date, hasta: Date): Promise<MPPayment[]> {
   const all: MPPayment[] = []
@@ -114,10 +164,13 @@ async function fetchAllMPPayments(desde: Date, hasta: Date): Promise<MPPayment[]
     }
 
     const data = await res.json()
-    const results = data.results as MPPayment[]
-    all.push(...results)
+    const results = (data.results as MPPaymentRaw[]).map(normalizarPago)
 
-    if (all.length >= data.paging.total || results.length < limit) {
+    // Filtrar solo pagos donde somos el collector (no pagos que nosotros hacemos)
+    const cobros = results.filter((p) => p.collector_id === COLLECTOR_ID)
+    all.push(...cobros)
+
+    if ((offset + results.length) >= data.paging.total || results.length < limit) {
       break
     }
     offset += limit
@@ -234,17 +287,23 @@ export async function getFinanzasData(
 
     grupo.cantOps++
     grupo.bruto += p.transaction_amount
-    grupo.neto += p.amounts.collector.net_received
+    grupo.neto += p.net_received
 
     for (const charge of p.charges_details) {
+      const monto = charge.amounts.original
+      // rate puede ser 0 en pagos viejos; calcular desde monto/bruto
+      const rate = charge.rate > 0
+        ? charge.rate
+        : (p.transaction_amount > 0 ? +((monto / p.transaction_amount) * 100).toFixed(2) : 0)
+
       if (charge.type === 'fee') {
-        grupo.comisionMP += charge.amounts.original
-        totalComisionMP += charge.amounts.original
-        grupo.tasas.push(charge.rate)
+        grupo.comisionMP += monto
+        totalComisionMP += monto
+        if (rate > 0) grupo.tasas.push(rate)
       } else if (charge.type === 'tax') {
-        grupo.sirtac += charge.amounts.original
-        totalSirtac += charge.amounts.original
-        grupo.tasasSirtac.push(charge.rate)
+        grupo.sirtac += monto
+        totalSirtac += monto
+        if (rate > 0) grupo.tasasSirtac.push(rate)
       }
     }
   }
@@ -283,7 +342,7 @@ export async function getFinanzasData(
     })
 
   const ingresosMPBruto = +mpPayments.reduce((s: number, p: MPPayment) => s + p.transaction_amount, 0).toFixed(2)
-  const ingresosMPNeto = +mpPayments.reduce((s: number, p: MPPayment) => s + p.amounts.collector.net_received, 0).toFixed(2)
+  const ingresosMPNeto = +mpPayments.reduce((s: number, p: MPPayment) => s + p.net_received, 0).toFixed(2)
   const totalDescuentosMP = +(totalComisionMP + totalSirtac).toFixed(2)
   const totalIngresos = +(ingresosEfectivo + ingresosMPBruto).toFixed(2)
 
@@ -350,7 +409,7 @@ export async function getFinanzasData(
 
     const efAnterior = ventasEfAnterior.reduce((s: number, v) => s + Number(v.total), 0)
     const mpBrutoAnterior = mpAnterior.reduce((s: number, p: MPPayment) => s + p.transaction_amount, 0)
-    const mpNetoAnterior = mpAnterior.reduce((s: number, p: MPPayment) => s + p.amounts.collector.net_received, 0)
+    const mpNetoAnterior = mpAnterior.reduce((s: number, p: MPPayment) => s + p.net_received, 0)
     const gastosAnterior = comprasAnterior.reduce((s: number, c) => s + Number(c.monto), 0)
 
     const ingresosAnterior = +(efAnterior + mpBrutoAnterior).toFixed(2)
