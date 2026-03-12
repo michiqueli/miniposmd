@@ -15,6 +15,7 @@ const links = [
   { href: '/admin/sucursales', label: 'Sucursales' },
   { href: '/admin/dispositivos', label: 'Terminales' },
   { href: '/admin/contable', label: 'Contable' },
+  { href: '/admin/finanzas', label: 'Finanzas', finanzas: true },
   { href: '/pos', label: 'POS', pos: true },
 ];
 
@@ -29,7 +30,9 @@ export default function AdminNav() {
             className={`rounded-xl px-3 py-1.5 font-semibold transition-colors ${
               link.pos
                 ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                : (link as Record<string, unknown>).finanzas
+                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             {link.label}

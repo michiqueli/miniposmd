@@ -76,6 +76,70 @@ export type ResumenIVA = {
   recomendacion: string;
 };
 
+// ── Finanzas ──
+export type TipoPeriodo = 'semana' | 'mes' | 'anio' | 'custom';
+
+export type DesgloseMPTipo = {
+  tipo: string;
+  label: string;
+  cantOps: number;
+  bruto: number;
+  comisionMP: number;
+  tasaMP: number;
+  sirtac: number;
+  tasaSirtac: number;
+  neto: number;
+};
+
+export type ResumenFinanzas = {
+  // Período
+  periodoLabel: string;
+  desde: string;
+  hasta: string;
+
+  // Ingresos
+  totalIngresos: number;
+  ingresosEfectivo: number;
+  ingresosMPBruto: number;
+  ingresosMPNeto: number;
+
+  // Comisiones MP
+  totalComisionMP: number;
+  totalSirtac: number;
+  totalDescuentosMP: number;
+  porcentajeComisionesTotal: number;
+
+  // Desglose por tipo de cobro MP
+  desgloseMPTipos: DesgloseMPTipo[];
+  cantOpsMP: number;
+
+  // Gastos
+  totalGastos: number;
+  gastosEfectivo: number;
+  gastosTransferencia: number;
+  gastosTarjeta: number;
+  gastosPorCategoria: { categoria: string; monto: number }[];
+
+  // Caja
+  saldoCajaEfectivo: number;
+  saldoEstimadoMP: number;
+
+  // Ganancia real
+  gananciaReal: number;
+  margenPorcentaje: number;
+
+  // Tendencia (comparación con período anterior)
+  tendencia: {
+    ingresosAnterior: number;
+    gananciaAnterior: number;
+    variacionIngresos: number;
+    variacionGanancia: number;
+  } | null;
+
+  // Alertas
+  alertas: string[];
+};
+
 // ── Item de factura (para reimpresión) ──
 export type ItemFacturaImpresion = {
   nombre: string;
