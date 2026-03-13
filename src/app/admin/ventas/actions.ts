@@ -98,7 +98,7 @@ export async function crearVentaManual(datos: {
 
   const total = items.reduce((sum, it) => sum + it.cantidad * it.precioUnit, 0);
 
-  await db.$transaction(async (tx: typeof db) => {
+  await db.$transaction(async (tx) => {
     await tx.venta.create({
       data: {
         fecha: fechaParsed,
