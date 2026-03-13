@@ -1,28 +1,39 @@
 // src/app/admin/ventas/page.tsx
 // ─────────────────────────────────────────────
 // Página de ventas del admin
-// CAMBIOS:
-//   - Ya no importa AdminNav ni llama requireRole (lo hace el layout)
-//   - Agrega caeVencimiento y docReceptor al serializar
 // ─────────────────────────────────────────────
 
 import { db } from '@/lib/db';
 import VentasTable from './components/VentasTable';
 
 export default async function AdminVentasPage() {
-  // requireRole ya se ejecutó en el layout
+  const [ventasRaw, productosRaw, sucursalesRaw, usuariosRaw] = await Promise.all([
+    db.venta.findMany({
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        sucursal: { select: { nombre: true } },
+        usuario: { select: { nombre: true } },
+      },
+    }),
+    db.producto.findMany({
+      where: { deletedAt: null },
+      orderBy: { nombre: 'asc' },
+      select: { id: true, nombre: true, precioEfectivo: true, precioDigital: true, categoria: true },
+    }),
+    db.sucursal.findMany({
+      orderBy: { nombre: 'asc' },
+      select: { id: true, nombre: true },
+    }),
+    db.usuario.findMany({
+      where: { deletedAt: null },
+      orderBy: { nombre: 'asc' },
+      select: { id: true, nombre: true, sucursalId: true },
+    }),
+  ]);
 
-  const ventasRaw = await db.venta.findMany({
-    where: { deletedAt: null },
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-    include: {
-      sucursal: { select: { nombre: true } },
-      usuario: { select: { nombre: true } },
-    },
-  });
-
-  const ventas = ventasRaw.map((venta) => ({
+  const ventas = ventasRaw.map((venta: typeof ventasRaw[number]) => ({
     id: venta.id,
     numeroVenta: venta.numeroVenta,
     createdAt: venta.createdAt.toISOString(),
@@ -39,18 +50,29 @@ export default async function AdminVentasPage() {
     usuarioNombre: venta.usuario.nombre,
   }));
 
+  const productos = productosRaw.map((p: typeof productosRaw[number]) => ({
+    id: p.id,
+    nombre: p.nombre,
+    precioEfectivo: Number(p.precioEfectivo),
+    precioDigital: Number(p.precioDigital),
+    categoria: p.categoria,
+  }));
+
+  const sucursales = sucursalesRaw.map((s: typeof sucursalesRaw[number]) => ({ id: s.id, nombre: s.nombre }));
+  const usuarios = usuariosRaw.map((u: typeof usuariosRaw[number]) => ({ id: u.id, nombre: u.nombre, sucursalId: u.sucursalId }));
+
   const sucursalOptions = [
     { label: 'Todas las sucursales', value: 'ALL' },
-    ...Array.from(new Set(ventas.map((v) => v.sucursalNombre)))
-      .sort((a, b) => a.localeCompare(b, 'es-AR'))
-      .map((nombre) => ({ label: nombre, value: nombre })),
+    ...(Array.from(new Set(ventas.map((v: typeof ventas[number]) => v.sucursalNombre))) as string[])
+      .sort((a: string, b: string) => a.localeCompare(b, 'es-AR'))
+      .map((nombre: string) => ({ label: nombre, value: nombre })),
   ];
 
   const usuarioOptions = [
     { label: 'Todos los usuarios', value: 'ALL' },
-    ...Array.from(new Set(ventas.map((v) => v.usuarioNombre)))
-      .sort((a, b) => a.localeCompare(b, 'es-AR'))
-      .map((nombre) => ({ label: nombre, value: nombre })),
+    ...(Array.from(new Set(ventas.map((v: typeof ventas[number]) => v.usuarioNombre))) as string[])
+      .sort((a: string, b: string) => a.localeCompare(b, 'es-AR'))
+      .map((nombre: string) => ({ label: nombre, value: nombre })),
   ];
 
   return (
@@ -65,6 +87,9 @@ export default async function AdminVentasPage() {
         ventas={ventas}
         sucursalOptions={sucursalOptions}
         usuarioOptions={usuarioOptions}
+        productos={productos}
+        sucursales={sucursales}
+        usuarios={usuarios}
       />
     </div>
   );
