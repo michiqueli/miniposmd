@@ -5,8 +5,9 @@
 // ─────────────────────────────────────────────
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import {
   TrendingUp, TrendingDown, DollarSign, CreditCard,
   Wallet, ArrowUpRight, ArrowDownRight, AlertTriangle,
@@ -50,13 +51,23 @@ function TendenciaBadge({ valor }: { valor: number }) {
 export default function FinanzasDashboard({ data, periodo, mes, anio }: Props) {
   const router = useRouter()
   const [periodoLocal, setPeriodoLocal] = useState<TipoPeriodo>(periodo)
+  const [isPending, startTransition] = useTransition()
 
   const navegar = (p: TipoPeriodo, m: number, a: number) => {
-    router.push(`/admin/finanzas?periodo=${p}&mes=${m}&anio=${a}`)
+    startTransition(() => {
+      router.push(`/admin/finanzas?periodo=${p}&mes=${m}&anio=${a}`)
+    })
   }
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      {/* Overlay de carga al cambiar período */}
+      {isPending && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/70 backdrop-blur-sm">
+          <Loader2 size={32} className="animate-spin text-emerald-600" />
+          <span className="text-sm font-semibold text-slate-600">Actualizando datos...</span>
+        </div>
+      )}
       {/* ── Selector de período ── */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-1.5">

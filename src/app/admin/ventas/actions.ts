@@ -1,9 +1,6 @@
 // src/app/admin/ventas/actions.ts
 // ─────────────────────────────────────────────
 // Server Actions para gestión de ventas desde el admin
-// CAMBIOS:
-//   - Estados unificados: PENDIENTE | APROBADO | ANULADO
-//   - Nueva: obtenerDatosFactura (para reimpresión)
 // ─────────────────────────────────────────────
 'use server'
 
@@ -22,6 +19,10 @@ export async function anularVenta(id: string) {
   revalidatePath('/admin/ventas');
 }
 
+// ══════════════════════════════════════════════
+// ACTUALIZAR VENTA (todos los campos editables)
+// ══════════════════════════════════════════════
+
 export async function actualizarVenta(formData: FormData) {
   await requireRole(['ADMIN']);
 
@@ -30,8 +31,9 @@ export async function actualizarVenta(formData: FormData) {
   const estadoPago = String(formData.get('estadoPago') || '').trim();
   const tipoFacturaRaw = String(formData.get('tipoFactura') || '').trim();
   const tipoFactura = tipoFacturaRaw.length > 0 ? tipoFacturaRaw : null;
+  const fechaRaw = String(formData.get('fecha') || '').trim();
+  const totalRaw = String(formData.get('total') || '').trim();
 
-  // Estados unificados
   if (
     !id ||
     !['EFECTIVO', 'MP'].includes(metodoPago) ||
@@ -40,9 +42,81 @@ export async function actualizarVenta(formData: FormData) {
     throw new Error('Datos inválidos para actualizar la venta');
   }
 
-  await db.venta.update({
-    where: { id },
-    data: { metodoPago, estadoPago, tipoFactura },
+  const data: Record<string, unknown> = { metodoPago, estadoPago, tipoFactura };
+
+  if (fechaRaw) {
+    const fecha = new Date(fechaRaw);
+    if (isNaN(fecha.getTime())) throw new Error('Fecha inválida');
+    data.fecha = fecha;
+  }
+
+  if (totalRaw) {
+    const total = parseFloat(totalRaw);
+    if (isNaN(total) || total < 0) throw new Error('Total inválido');
+    data.total = total;
+  }
+
+  await db.venta.update({ where: { id }, data });
+
+  revalidatePath('/admin/ventas');
+}
+
+// ══════════════════════════════════════════════
+// CREAR VENTA MANUAL
+// ══════════════════════════════════════════════
+
+type ItemVentaManual = {
+  productoId: string
+  cantidad: number
+  precioUnit: number
+}
+
+export async function crearVentaManual(datos: {
+  fecha: string
+  metodoPago: string
+  estadoPago: string
+  sucursalId: string
+  usuarioId: string
+  items: ItemVentaManual[]
+}) {
+  await requireRole(['ADMIN']);
+
+  const { fecha, metodoPago, estadoPago, sucursalId, usuarioId, items } = datos;
+
+  if (!['EFECTIVO', 'MP'].includes(metodoPago)) {
+    throw new Error('Método de pago inválido');
+  }
+  if (!['PENDIENTE', 'APROBADO', 'ANULADO'].includes(estadoPago)) {
+    throw new Error('Estado de pago inválido');
+  }
+  if (!items.length) {
+    throw new Error('Debe agregar al menos un producto');
+  }
+
+  const fechaParsed = new Date(fecha);
+  if (isNaN(fechaParsed.getTime())) throw new Error('Fecha inválida');
+
+  const total = items.reduce((sum, it) => sum + it.cantidad * it.precioUnit, 0);
+
+  await db.$transaction(async (tx: typeof db) => {
+    await tx.venta.create({
+      data: {
+        fecha: fechaParsed,
+        total,
+        metodoPago,
+        estadoPago,
+        sucursalId,
+        usuarioId,
+        items: {
+          create: items.map((it) => ({
+            cantidad: it.cantidad,
+            precioUnit: it.precioUnit,
+            subtotal: it.cantidad * it.precioUnit,
+            productoId: it.productoId,
+          })),
+        },
+      },
+    });
   });
 
   revalidatePath('/admin/ventas');
