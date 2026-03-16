@@ -63,9 +63,34 @@ export default function FinanzasDashboard({ data, periodo, mes, anio }: Props) {
     <div className="relative space-y-6">
       {/* Overlay de carga al cambiar período */}
       {isPending && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/70 backdrop-blur-sm">
-          <Loader2 size={32} className="animate-spin text-emerald-600" />
-          <span className="text-sm font-semibold text-slate-600">Actualizando datos...</span>
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-2xl bg-white/80 backdrop-blur-sm">
+          {/* Logo MP animado */}
+          <div className="relative">
+            <div className="h-16 w-16 rounded-2xl bg-[#009EE3] flex items-center justify-center shadow-lg shadow-[#009EE3]/30 animate-pulse">
+              <svg viewBox="0 0 24 24" fill="white" className="h-9 w-9">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+              </svg>
+            </div>
+            <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-white flex items-center justify-center shadow">
+              <Loader2 size={14} className="animate-spin text-[#009EE3]" />
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-base font-bold text-slate-700">Consultando Mercado Pago</p>
+            <p className="text-sm text-slate-500 mt-1">Obteniendo movimientos y comisiones del período...</p>
+          </div>
+          {/* Barra de progreso indeterminada */}
+          <div className="w-64 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+            <div className="h-full w-1/3 bg-[#009EE3] rounded-full animate-[shimmer_1.5s_ease-in-out_infinite]"
+              style={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
+            />
+          </div>
+          <style>{`
+            @keyframes shimmer {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(400%); }
+            }
+          `}</style>
         </div>
       )}
       {/* ── Selector de período ── */}
