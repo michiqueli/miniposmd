@@ -63,30 +63,39 @@ export default function FinanzasDashboard({ data, periodo, mes, anio }: Props) {
     <div className="relative space-y-6">
       {/* Overlay de carga al cambiar período */}
       {isPending && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-2xl bg-white/80 backdrop-blur-sm">
-          {/* Logo MP animado */}
-          <div className="relative">
-            <div className="h-16 w-16 rounded-2xl bg-[#009EE3] flex items-center justify-center shadow-lg shadow-[#009EE3]/30 animate-pulse">
-              <svg viewBox="0 0 24 24" fill="white" className="h-9 w-9">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-              </svg>
+        <div className="absolute inset-0 z-20 bg-white/80 backdrop-blur-sm rounded-2xl">
+          <div className="sticky top-24 flex flex-col items-center gap-5 pt-16 pb-8">
+            {/* Logo MP con animación */}
+            <div className="relative">
+              <div className="h-20 w-20 rounded-2xl bg-[#009EE3] flex items-center justify-center shadow-xl shadow-[#009EE3]/25 animate-bounce" style={{ animationDuration: '2s' }}>
+                <svg viewBox="0 0 24 24" fill="white" className="h-11 w-11">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                </svg>
+              </div>
+              {/* Spinner orbital */}
+              <div className="absolute inset-0 h-20 w-20 rounded-full border-2 border-transparent border-t-[#009EE3] animate-spin" style={{ animationDuration: '1.2s' }} />
             </div>
-            <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-white flex items-center justify-center shadow">
-              <Loader2 size={14} className="animate-spin text-[#009EE3]" />
+            <div className="text-center">
+              <p className="text-lg font-bold text-slate-700">Buscando información en Mercado Pago</p>
+              <p className="text-sm text-slate-500 mt-2">Obteniendo ventas, comisiones y retenciones del período seleccionado...</p>
             </div>
-          </div>
-          <div className="text-center">
-            <p className="text-base font-bold text-slate-700">Consultando Mercado Pago</p>
-            <p className="text-sm text-slate-500 mt-1">Obteniendo movimientos y comisiones del período...</p>
-          </div>
-          {/* Barra de progreso indeterminada */}
-          <div className="w-64 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-            <div className="h-full w-1/3 bg-[#009EE3] rounded-full animate-[shimmer_1.5s_ease-in-out_infinite]"
-              style={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
-            />
+            {/* Barra de progreso indeterminada */}
+            <div className="w-72 h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full w-1/3 rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, #009EE3, #00B4FF, #009EE3)',
+                  animation: 'mp-loading-bar 1.5s ease-in-out infinite',
+                }}
+              />
+            </div>
+            <span className="animate-pulse flex items-center gap-2 text-sm text-slate-400">
+              <span className="inline-block h-2 w-2 rounded-full bg-[#009EE3]" />
+              Conectando con la API de Mercado Pago...
+            </span>
           </div>
           <style>{`
-            @keyframes shimmer {
+            @keyframes mp-loading-bar {
               0% { transform: translateX(-100%); }
               100% { transform: translateX(400%); }
             }
