@@ -8,19 +8,19 @@ import { Button } from '@/components/ui/Button';
 export default function PosTopBar({
   usuarioNombre,
   usuarioRole,
-  sucursalId,
+  sucursalNombre,
   onCargarCompra,
 }: {
   usuarioNombre: string;
   usuarioRole: 'ADMIN' | 'CASHIER';
-  sucursalId: string;
+  sucursalNombre: string;
   onCargarCompra?: () => void;
 }) {
   return (
     <div className="fixed top-4 left-4 right-4 z-40 flex justify-between items-center rounded-2xl border border-slate-200 bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
       <div>
         <p className="font-bold text-slate-700">{usuarioNombre}</p>
-        <p className="text-xs text-slate-500">{usuarioRole} · Sucursal {sucursalId.slice(0, 8)}...</p>
+        <p className="text-xs text-slate-500">{usuarioRole} · {sucursalNombre}</p>
       </div>
       <div className="flex items-center gap-2">
         <button

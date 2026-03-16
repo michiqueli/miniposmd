@@ -28,11 +28,13 @@ import type { ProductoPOS, ItemCarrito } from '@/lib/types'
 export default function PosShell({
   productos,
   sucursalId,
+  sucursalNombre,
   usuarioNombre,
   usuarioRole,
 }: {
   productos: ProductoPOS[];
   sucursalId: string;
+  sucursalNombre: string;
   usuarioId: string;
   usuarioNombre: string;
   usuarioRole: 'ADMIN' | 'CASHIER';
@@ -213,7 +215,7 @@ export default function PosShell({
       <PosTopBar
         usuarioNombre={usuarioNombre}
         usuarioRole={usuarioRole}
-        sucursalId={sucursalId}
+        sucursalNombre={sucursalNombre}
         onCargarCompra={() => setShowCompraModal(true)}
       />
 
