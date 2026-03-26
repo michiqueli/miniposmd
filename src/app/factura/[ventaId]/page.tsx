@@ -46,7 +46,7 @@ export default async function FacturaPage({ params }: Props) {
     metodoPago: venta.metodoPago,
     vendedor: venta.usuario.nombre,
     items: venta.items.map((item: any) => ({
-      nombre: item.producto.nombre,
+      nombre: item.nombreManual || item.producto?.nombre || 'Item',
       cantidad: item.cantidad,
       precioUnit: Number(item.precioUnit),
       subtotal: Number(item.subtotal),

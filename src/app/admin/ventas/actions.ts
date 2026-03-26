@@ -149,7 +149,7 @@ export async function obtenerDatosFactura(
   const esRI = venta.sucursal.regimen === 'RI';
 
   const items = venta.items.map((item: any) => ({
-    nombre: item.producto.nombre,
+    nombre: item.nombreManual || item.producto?.nombre || 'Item',
     cantidad: item.cantidad,
     precioUnit: Number(item.precioUnit),
     subtotal: Number(item.subtotal),

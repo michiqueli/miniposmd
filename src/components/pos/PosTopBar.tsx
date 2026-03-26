@@ -17,7 +17,7 @@ export default function PosTopBar({
   onCargarCompra?: () => void;
 }) {
   return (
-    <div className="fixed top-4 left-4 right-4 z-40 flex justify-between items-center rounded-2xl border border-slate-200 bg-white/95 px-4 py-2 shadow-sm backdrop-blur">
+    <div className="fixed top-2 left-2 right-2 z-40 flex justify-between items-center rounded-xl border border-slate-200 bg-white/95 px-3 py-1.5 shadow-sm backdrop-blur">
       <div>
         <p className="font-bold text-slate-700">{usuarioNombre}</p>
         <p className="text-xs text-slate-500">{usuarioRole} · {sucursalNombre}</p>

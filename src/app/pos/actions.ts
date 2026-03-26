@@ -20,6 +20,7 @@ export async function registrarVenta(data: {
     precioEfectivo: number;
     precioDigital: number;
     cantidad: number;
+    esManual?: boolean;
   }>;
   total: number;
   metodoPago: string;
@@ -39,14 +40,15 @@ export async function registrarVenta(data: {
         },
       });
 
-      // 2. Crear los ítems de la venta (NUEVO — detalle para contabilidad)
+      // 2. Crear los ítems de la venta
       const isEfectivo = data.metodoPago === 'EFECTIVO';
       for (const item of data.items) {
         const precioUnit = isEfectivo ? item.precioEfectivo : item.precioDigital;
         await tx.ventaItem.create({
           data: {
             ventaId: venta.id,
-            productoId: item.id,
+            productoId: item.esManual ? null : item.id,
+            nombreManual: item.esManual ? item.nombre : null,
             cantidad: item.cantidad,
             precioUnit: precioUnit,
             subtotal: precioUnit * item.cantidad,
@@ -54,8 +56,9 @@ export async function registrarVenta(data: {
         });
       }
 
-      // 3. Descontar stock
+      // 3. Descontar stock (solo para productos reales, no manuales)
       for (const item of data.items) {
+        if (item.esManual) continue;
         await tx.stockSucursal.update({
           where: {
             sucursalId_productoId: {

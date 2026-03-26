@@ -19,7 +19,7 @@ export type ProductoPOS = {
   categoria: string;
 };
 
-export type ItemCarrito = ProductoPOS & { cantidad: number };
+export type ItemCarrito = ProductoPOS & { cantidad: number; esManual?: boolean };
 
 // ── Ventas (serializado para client components) ──
 export type VentaRow = {

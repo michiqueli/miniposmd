@@ -124,15 +124,16 @@ model Venta {
 // DETALLE DE VENTA (NUEVO)
 // ─────────────────────────────────────────────
 model VentaItem {
-  id         String  @id @default(uuid())
-  cantidad   Float
-  precioUnit Decimal @db.Decimal(10, 2)
-  subtotal   Decimal @db.Decimal(10, 2)
+  id            String  @id @default(uuid())
+  cantidad      Float
+  precioUnit    Decimal @db.Decimal(10, 2)
+  subtotal      Decimal @db.Decimal(10, 2)
+  nombreManual  String? // Para ítems manuales (bebidas, etc.)
 
   ventaId    String
   venta      Venta    @relation(fields: [ventaId], references: [id])
-  productoId String
-  producto   Producto @relation(fields: [productoId], references: [id])
+  productoId String?
+  producto   Producto? @relation(fields: [productoId], references: [id])
 
   createdAt DateTime @default(now())
 }

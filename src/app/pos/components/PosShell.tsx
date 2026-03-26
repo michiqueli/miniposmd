@@ -9,7 +9,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { CreditCard, Banknote, Smartphone, Loader2, Share2, Check } from 'lucide-react'
+import { CreditCard, Banknote, Smartphone, Loader2, Share2, Check, PencilLine } from 'lucide-react'
 import {
   enviarCobroTerminal,
   consultarEstadoOrden,     // ← FIX: antes era consultarEstadoPagoIntent
@@ -54,7 +54,36 @@ export default function PosShell({
   const [compartiendo, setCompartiendo] = useState(false)
   const [facturaInfo, setFacturaInfo] = useState<{ ventaId: string; tipo: string; nro: number } | null>(null)
   const [showCompraModal, setShowCompraModal] = useState(false)
+  const [showManualItem, setShowManualItem] = useState(false)
+  const [manualNombre, setManualNombre] = useState('')
+  const [manualPrecio, setManualPrecio] = useState('')
   const { showToast } = useToast()
+
+  // ── Item manual ──
+
+  const agregarItemManual = () => {
+    const precio = parseFloat(manualPrecio)
+    if (!manualNombre.trim() || isNaN(precio) || precio <= 0) {
+      showToast('Ingresá nombre y precio válido', 'error')
+      return
+    }
+    const manualId = `manual-${Date.now()}`
+    setCarrito(prev => [
+      ...prev,
+      {
+        id: manualId,
+        nombre: manualNombre.trim(),
+        precioEfectivo: precio,
+        precioDigital: precio,
+        categoria: 'MANUAL',
+        cantidad: 1,
+        esManual: true,
+      },
+    ])
+    setManualNombre('')
+    setManualPrecio('')
+    setShowManualItem(false)
+  }
 
   // ── Carrito ──
 
@@ -220,8 +249,8 @@ export default function PosShell({
       />
 
       {/* ── Grilla de productos + panel de cobro ── */}
-      <div className="w-2/3 pt-24 flex flex-col">
-        <div className="flex-1 p-4 overflow-y-auto pb-6">
+      <div className="w-2/3 pt-[4.5rem] flex flex-col">
+        <div className="flex-1 p-3 overflow-y-auto pb-2">
           <ProductGrid
             productos={productos}
             metodoPago={metodoPago}
@@ -229,37 +258,37 @@ export default function PosShell({
           />
         </div>
 
-        <div className="p-4 bg-slate-100 border-t border-slate-200">
-          <div className="rounded-3xl bg-white border border-slate-200 shadow-md p-4">
-            <div className="mt-3 text-center mb-6">
-              <span className="text-xs font-black text-slate-400 uppercase tracking-wider">
+        <div className="p-3 bg-slate-100 border-t border-slate-200">
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-md p-3">
+            <div className="text-center mb-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
                 Total a pagar
               </span>
-              <p className="text-4xl font-black text-slate-800">${total.toFixed(2)}</p>
+              <p className="text-2xl font-black text-slate-800">${total.toFixed(2)}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <button
                 onClick={() => setMetodoPago('EFECTIVO')}
-                className={`h-20 rounded-2xl font-black border-2 transition-all flex flex-col items-center justify-center text-xl ${
+                className={`h-12 rounded-xl font-bold border-2 transition-all flex items-center justify-center gap-2 text-sm ${
                   metodoPago === 'EFECTIVO'
                     ? 'border-green-500 bg-green-50 text-green-700 shadow-sm'
                     : 'border-slate-200 text-slate-500 bg-slate-50'
                 }`}
               >
-                <Banknote size={28} className="mb-2" />
+                <Banknote size={20} />
                 EFECTIVO
               </button>
 
               <button
                 onClick={() => setMetodoPago('TERMINAL')}
-                className={`h-20 rounded-2xl font-black border-2 transition-all flex flex-col items-center justify-center text-xl ${
+                className={`h-12 rounded-xl font-bold border-2 transition-all flex items-center justify-center gap-2 text-sm ${
                   metodoPago === 'TERMINAL'
                     ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
                     : 'border-slate-200 text-slate-500 bg-slate-50'
                 }`}
               >
-                <CreditCard size={28} className="mb-2" />
+                <CreditCard size={20} />
                 TERMINAL MP
               </button>
             </div>
@@ -267,7 +296,7 @@ export default function PosShell({
             <button
               disabled={cargando || carrito.length === 0}
               onClick={handleFinalizarVenta}
-              className="h-28 w-full rounded-2xl font-black bg-orange-500 hover:bg-orange-400 disabled:bg-slate-300 disabled:text-slate-500 text-white text-3xl shadow-lg transition-all active:scale-95"
+              className="h-14 w-full rounded-xl font-black bg-orange-500 hover:bg-orange-400 disabled:bg-slate-300 disabled:text-slate-500 text-white text-xl shadow-lg transition-all active:scale-95"
             >
               {cargando ? 'COBRANDO...' : 'COBRAR'}
             </button>
@@ -283,7 +312,61 @@ export default function PosShell({
         onIncreaseItem={sumarProducto}
         onDecreaseItem={restarProducto}
         onRemoveItem={quitarProducto}
+        onAddManual={() => setShowManualItem(true)}
       />
+
+      {/* ── Modal: Item Manual ── */}
+      {showManualItem && (
+        <div className="fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm">
+            <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+              <PencilLine size={20} className="text-orange-500" />
+              Item Manual
+            </h2>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Nombre</label>
+                <input
+                  type="text"
+                  value={manualNombre}
+                  onChange={e => setManualNombre(e.target.value)}
+                  placeholder="Ej: Bebida, Café..."
+                  className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Precio</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={manualPrecio}
+                  onChange={e => setManualPrecio(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  onKeyDown={e => e.key === 'Enter' && agregarItemManual()}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => { setShowManualItem(false); setManualNombre(''); setManualPrecio('') }}
+                className="flex-1 py-2.5 rounded-xl font-bold text-slate-500 border border-slate-200 hover:bg-slate-50 text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={agregarItemManual}
+                className="flex-1 py-2.5 rounded-xl font-bold bg-orange-500 hover:bg-orange-400 text-white text-sm shadow active:scale-95 transition-all"
+              >
+                Agregar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Overlay: Esperando pago en terminal ── */}
       {esperandoPago && (
