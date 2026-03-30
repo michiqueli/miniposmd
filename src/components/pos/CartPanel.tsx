@@ -27,17 +27,8 @@ export default function CartPanel({
 }) {
   return (
     <div className="w-1/3 bg-white border-l shadow-xl flex flex-col pt-[4.5rem]">
-      <div className="px-3 py-2 border-b bg-slate-50 flex justify-between items-center">
+      <div className="px-3 py-2 border-b bg-slate-50 flex items-center">
         <h2 className="font-bold flex items-center gap-2 text-slate-700 text-sm"><ShoppingCart size={18} /> Carrito</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onAddManual}
-            className="flex items-center gap-1 text-xs font-bold text-orange-500 hover:text-orange-600 bg-orange-50 hover:bg-orange-100 px-2.5 py-1.5 rounded-lg transition-colors"
-          >
-            <PencilLine size={14} /> + Manual
-          </button>
-          <button onClick={onClear} className="text-red-400 hover:text-red-600 transition-colors"><Trash2 size={16} /></button>
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -94,6 +85,23 @@ export default function CartPanel({
             </div>
           </Card>
         ))}
+      </div>
+
+      <div className="px-3 py-3 border-t bg-slate-50 flex gap-2">
+        <button
+          onClick={onAddManual}
+          className="w-3/4 flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl border-2 border-dashed border-orange-300 bg-orange-50 hover:bg-orange-100 hover:border-orange-400 text-orange-600 font-bold text-sm transition-colors active:scale-[0.98]"
+        >
+          <PencilLine size={18} />
+          + Ítem manual
+        </button>
+        <button
+          onClick={onClear}
+          className="w-1/4 flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl border-2 border-red-200 bg-red-50 hover:bg-red-100 hover:border-red-300 text-red-500 font-bold text-xs transition-colors active:scale-[0.98]"
+        >
+          <Trash2 size={18} />
+          Vaciar
+        </button>
       </div>
     </div>
   );
